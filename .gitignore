@@ -1,0 +1,22 @@
+# Virtual environment
+.venv/
+
+# Large data files
+*.pkl
+dataset/
+
+# Zip archives
+*.zip
+
+# Third-party code (clone separately if you need it)
+SabberStone/
+hearthstonemap-master/
+
+# Jupyter + Python junk
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+
+Papers/*
+!Papers/Papers_list.md
+Seminar/
