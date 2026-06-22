@@ -1,0 +1,52 @@
+{
+  "rank_set": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "top_class": "Warrior",
+  "top_class_games": 9469,
+  "top_class_cache": "D:\\test\\warrior_dataframes_rank5to10.pkl",
+  "top_class_players": 109,
+  "top_deck_class": "Warrior",
+  "top_deck_arch": "Pirate",
+  "top_deck_games": 6075,
+  "top_deck_cache": "D:\\test\\warrior_pirate_dataframes_rank5to10.pkl",
+  "top_deck_players": 83,
+  "class_counts": {
+    "Warrior": 9469,
+    "Druid": 7103,
+    "Shaman": 6959,
+    "Rogue": 5744,
+    "Paladin": 4791,
+    "Priest": 4436,
+    "Mage": 4257,
+    "Warlock": 3225,
+    "Hunter": 2830
+  },
+  "deck_counts": {
+    "Warrior|Pirate": 6075,
+    "Paladin|Murloc": 3019,
+    "Rogue|Miracle": 2713,
+    "Druid|Token": 2032,
+    "Druid|Jade": 1894,
+    "Hunter|Midrange": 1787,
+    "Shaman|Aggro": 1783,
+    "Shaman|Midrange": 1420,
+    "Warlock|Zoo": 1253,
+    "Priest|Dragon": 1155,
+    "Warlock|Reno": 996,
+    "Warrior|Dragon": 959,
+    "Priest|Combo": 812,
+    "Mage|Burn": 794,
+    "Shaman|Token": 754,
+    "Shaman|Jade": 669,
+    "Mage|Freeze": 644,
+    "Mage|Reno": 612,
+    "Warrior|Taunt": 605,
+    "Shaman|Control": 485
+  }
+}
