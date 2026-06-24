@@ -21,4 +21,5 @@ Papers/*
 !Papers/Papers_list.md
 Seminar/
 
-log/
+log/*
+!log/run_batch_matrix.py
