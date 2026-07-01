@@ -16,7 +16,10 @@ import os, re, glob, csv, collections
 import numpy as np
 import pandas as pd
 
-LOG_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "log")
+# this file lives in <repo>/Log_Analysis/V1/; the log/ data and cache .pkl live at
+# the repo root (two levels up).  Anchor paths there regardless of the kernel's CWD.
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+LOG_ROOT = os.path.join(BASE_DIR, "log")
 STYLES   = ["aggro", "control", "fatigue", "midrange", "ramp"]
 MANA_CAP = 10
 
