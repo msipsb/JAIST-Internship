@@ -60,11 +60,11 @@ set of the version it came from*, so it matches that version's own notebook:
 | **R2** | §5 Per-game: PCA + t-SNE + KMeans confusion (ARI≈0.09) | **V2**, Mage | 11 V2 metrics | Proves one game overlaps — sets up the problem |
 | **R3 ★** | §6 ARI-vs-N curve + fingerprint clouds (N=120) + confusion | **V2**, Mage | 11 V2 metrics | The headline: 0.09 → 0.99 |
 | **R4** | Q1 · accuracy vs #games (per style) | **V3-full**, Mage | 29 (V2 + trajectory + tells) | The practical answer (~30 games → 90%) |
-| **R5** | Within-deck vs cross-deck transfer (bar) | **V4**, both | 3 feature sets | The open problem: collapse to ~0.24 |
+| **R5** | Within-deck vs cross-deck transfer (bar) | **V4**, both | 3 feature sets | The open problem: cross-deck ARI → ~0 (LDA, N=10) |
 | **R6** | Cross-deck per-style recall (heatmap) | **V4**, both | agnostic (29) | Only fatigue transfers |
 | **R6b** | Cross-deck aggregate accuracy vs games pooled | **V4**, both | agnostic (29) | The clincher: pooling does *nothing* cross-deck → it's bias, not noise |
 | **R7** *(opt)* | RF feature importance | **V2**, Mage | 11 V2 metrics | Which metrics carry style — support, not spine |
-| **R6c** *(opt)* | Aggregated cross-deck: raw vs deck-normalised | **V4**, both | agnostic (29) | First partial fix (~0.30 → ~0.45) — future-work traction |
+| **R6c** *(opt)* | Aggregated cross-deck: raw vs deck-normalised | **V4**, both | agnostic (29) | First partial fix (ARI ~0.22 → ~0.44) — future-work traction |
 
 > **Provenance of the code.** R1/R2/R3/R7 are lifted from
 > [`V2/…_v2.ipynb`](V2/playstyle_log_distribution_analysis_RenoKazakusMage_v2.ipynb) (§3/§5/§5b/§6);
@@ -401,20 +401,22 @@ R5_MD = r"""
 ## R5 · Within-deck vs cross-deck transfer (bar)
 
 * **From:** V4 · **both** deck families · source §9a (cell `v4xdeck_rf`).
-* **Why a slide (the open problem):** everything above lived on **one** deck. Train a RandomForest
-  on one deck and score the **other** and the accuracy collapses toward chance (~0.24 vs 0.20). The AI's
-  “style” is **entangled with the deck**, not a free-floating fingerprint.
-* **The comparison is the point:** the **V4 agnostic** features transfer *better* than the deck-leaky
-  V3-full set while matching it within-deck — normalization removed deck-identity leakage without
-  discarding behaviour. This cell defines `FEATURE_SETS`, `cross_rf`, `DA/DB` reused by R6/R6b.
+* **Model / metric:** **LDA** on **N = 10-game fingerprints**, scored by **ARI** (adjusted Rand index
+  of the predictions vs the true styles; chance = 0).
+* **Why a slide (the open problem):** everything above lived on **one** deck. Train LDA on one deck and
+  score the **other** and the agreement collapses toward chance — within-deck ARI ≈ 0.3–0.6 but
+  cross-deck ARI ≈ 0. The AI's “style” is **entangled with the deck**, not a free-floating fingerprint.
+* **The comparison:** *no* feature set rescues the transfer — cross-deck ARI stays near 0 for the
+  deck-leaky V3-full set, the V4 agnostic set and the pure-ratio set alike, confirming the gap is
+  **bias, not noise**. This cell defines `FEATURE_SETS`, `cross_lda`, `_xy`, `DA/DB` reused by R6/R6b.
 """
 
 R5 = r'''
-# R5 — §9a within-deck (reference) vs cross-deck RandomForest  (defines FEATURE_SETS/cross_rf/DA/DB)
+# R5 — §9a within-deck (reference) vs cross-deck LDA on N=10 fingerprints, scored by ARI
+#      (defines FEATURE_SETS / cross_lda / _xy / DA / DB reused by R6/R6b)
 from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import cross_val_predict
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.metrics import adjusted_rand_score, confusion_matrix
 from playstyle_log_parse_v4 import METRICS as V2M, TRAJ_METRICS as _TRAJ, A_FEATURES as _AF
 
 V3_FULL  = list(V2M) + list(_TRAJ) + list(_AF)
@@ -424,31 +426,49 @@ FEATURE_SETS = {
     f"V4 pure-ratio ({len(RATIO_FEATURES)})":    list(RATIO_FEATURES),
 }
 DA, DB = "RenoKazakusMage", "AggroPirateWarrior"
+N_FP   = 10                                       # games averaged into one fingerprint
 
 def _xy(df, feats, fill_from=None):
     med = (df if fill_from is None else fill_from)[feats].median()
     return df[feats].fillna(med).values, df["style"].astype(str).values
 
-def within_rf(feats, deck):
+def _fingerprints(Xby, N, reps, seed):
+    """Bootstrap `reps` N-game mean fingerprints per style from a {style: rows} dict."""
+    r = np.random.default_rng(seed); Xs, ys = [], []
+    for s in STYLE_ORDER:
+        a = Xby[s]
+        for _ in range(reps):
+            Xs.append(a[r.integers(0, len(a), N)].mean(0)); ys.append(s)
+    return np.array(Xs), np.array(ys)
+
+def within_lda(feats, deck, N=N_FP):
+    """Within-deck reference: split games 50/50, LDA on N-game fingerprints, ARI on the held-out half."""
     d = games_all[games_all["deck"] == deck]
     X, y = _xy(d, feats); Xs = StandardScaler().fit_transform(X)
-    rf = RandomForestClassifier(n_estimators=300, random_state=0, n_jobs=-1)
-    return accuracy_score(y, cross_val_predict(rf, Xs, y, cv=5))
+    rng = np.random.default_rng(0); trby, teby = {}, {}
+    for s in STYLE_ORDER:
+        idx = np.where(y == s)[0]; rng.shuffle(idx); h = len(idx) // 2
+        trby[s], teby[s] = Xs[idx[:h]], Xs[idx[h:]]
+    Xa, ya = _fingerprints(trby, N, 300, 10); Xb, yb = _fingerprints(teby, N, 300, 20)
+    pred = LinearDiscriminantAnalysis().fit(Xa, ya).predict(Xb)
+    return adjusted_rand_score(yb, pred)
 
-def cross_rf(feats, a, b):
+def cross_lda(feats, a, b, N=N_FP):
+    """Train deck a -> test deck b: LDA on N-game fingerprints. Returns (ARI, per-style recall dict)."""
     tr, te = games_all[games_all["deck"] == a], games_all[games_all["deck"] == b]
     Xtr, ytr = _xy(tr, feats); Xte, yte = _xy(te, feats, fill_from=tr)
-    sc = StandardScaler().fit(Xtr)
-    rf = RandomForestClassifier(n_estimators=300, random_state=0, n_jobs=-1).fit(sc.transform(Xtr), ytr)
-    pred = rf.predict(sc.transform(Xte))
-    cm = confusion_matrix(yte, pred, labels=STYLE_ORDER, normalize="true")
-    return accuracy_score(yte, pred), dict(zip(STYLE_ORDER, np.diag(cm)))
+    sc = StandardScaler().fit(Xtr); Xtr, Xte = sc.transform(Xtr), sc.transform(Xte)
+    trby = {s: Xtr[ytr == s] for s in STYLE_ORDER}; teby = {s: Xte[yte == s] for s in STYLE_ORDER}
+    Xa, ya = _fingerprints(trby, N, 300, 10); Xb, yb = _fingerprints(teby, N, 300, 20)
+    pred = LinearDiscriminantAnalysis().fit(Xa, ya).predict(Xb)
+    cm = confusion_matrix(yb, pred, labels=STYLE_ORDER, normalize="true")
+    return adjusted_rand_score(yb, pred), dict(zip(STYLE_ORDER, np.diag(cm)))
 
 rows = []
 for name, feats in FEATURE_SETS.items():
-    wA, wB = within_rf(feats, DA), within_rf(feats, DB)
-    cAB, perAB = cross_rf(feats, DA, DB)
-    cBA, perBA = cross_rf(feats, DB, DA)
+    wA, wB = within_lda(feats, DA), within_lda(feats, DB)
+    cAB, _ = cross_lda(feats, DA, DB)
+    cBA, _ = cross_lda(feats, DB, DA)
     rows.append(dict(feature_set=name, within_Mage=wA, within_Warrior=wB,
                      cross_M2W=cAB, cross_W2M=cBA))
 res = pd.DataFrame(rows).set_index("feature_set")
@@ -456,9 +476,9 @@ display(res.round(3))
 
 fig, ax = plt.subplots(figsize=(11, 4.5))
 res[["within_Mage", "within_Warrior", "cross_M2W", "cross_W2M"]].plot.bar(ax=ax)
-ax.axhline(0.20, color="k", ls="--", lw=1, label="chance (0.20)")
-ax.set_ylabel("RF accuracy"); ax.set_xlabel("")
-ax.set_title("Within-deck (solid signal) vs cross-deck transfer — V4 agnostic > V3 deck-leaky")
+ax.axhline(0.0, color="k", ls="--", lw=1, label="chance (ARI = 0)")
+ax.set_ylabel("ARI (LDA, N=10 fingerprints)"); ax.set_xlabel("")
+ax.set_title("Within-deck (solid signal) vs cross-deck transfer — cross-deck ARI collapses to ~0")
 ax.set_xticklabels(ax.get_xticklabels(), rotation=12, ha="right")
 ax.legend(fontsize=8, ncol=3); fig.tight_layout(); plt.show()
 '''
@@ -468,25 +488,28 @@ R6_MD = r"""
 ## R6 · Cross-deck per-style recall (heatmap)
 
 * **From:** V4 · **both** decks · agnostic features · source §9b (cell `v4xdeck_agg`, heatmap half).
+* **Model:** the **same LDA on N = 10-game fingerprints** as R5 — this heatmap is that model's
+  per-style recall (the diagonal of its cross-deck confusion matrix).
 * **Why a slide:** *which* styles survive a deck swap? Per-style recall (train one deck → test the
   other, both directions) shows **only the slow archetypes — `fatigue` and `ramp` — transfer**;
   `aggro`/`midrange`/`control` collapse. On the all-out Pirate Warrior deck almost everything reads
-  as aggro, and midrange is the mushy middle on both decks.
-* **Depends on R5** (`FEATURE_SETS`, `cross_rf`, `DA/DB`).
+  as aggro/ramp, and midrange is the mushy middle on both decks.
+* **Depends on R5** (`FEATURE_SETS`, `cross_lda`, `DA/DB`).
 """
 
 R6 = r'''
-# R6 — §9b cross-deck per-style recall heatmaps (needs FEATURE_SETS/cross_rf/DA/DB from R5)
+# R6 — §9b cross-deck per-style recall heatmaps: the same LDA on N=10 fingerprints as R5
+#      (per-style recall = diagonal of that model's cross-deck confusion matrix)
 fig, axes = plt.subplots(1, 2, figsize=(12, 3.6))
 for ax, (a, b, ttl) in zip(axes, [(DA, DB, "train Mage -> test Warrior"),
                                   (DB, DA, "train Warrior -> test Mage")]):
-    rec = {name: cross_rf(feats, a, b)[1] for name, feats in FEATURE_SETS.items()}
+    rec = {name: cross_lda(feats, a, b)[1] for name, feats in FEATURE_SETS.items()}
     M = pd.DataFrame(rec).T[STYLE_ORDER]
     sns.heatmap(M, annot=True, fmt=".2f", cmap="viridis", vmin=0, vmax=1, ax=ax,
                 cbar_kws={"label": "per-style recall"})
     ax.set_title(ttl, fontsize=10)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=8)
-fig.suptitle("Cross-deck per-style recall (chance = 0.20) — only fatigue/ramp transfer", y=1.04)
+fig.suptitle("Cross-deck per-style recall (LDA, N=10 fingerprints) — only fatigue/ramp transfer", y=1.04)
 fig.tight_layout(); plt.show()
 '''
 
@@ -581,22 +604,25 @@ R6C_MD = r"""
 ## R6c · Aggregated cross-deck: raw vs deck-normalised *(optional)*
 
 * **From:** V4 · **both** decks · agnostic features · reviewer follow-up #3b (domain-shift correction).
+* **Model / metric:** matched to R5/R6 — **LDA on N = 10-game fingerprints**, scored by **ARI**.
 * **Why a slide (future-work traction):** the *first partial fix* for the R5/R6/R6b collapse. Instead of
   raw feature values, express each game as **how far it deviates from the average player of its own deck**
-  (per-deck z-score). That removes the deck-level bias and lifts aggregated cross-deck accuracy from
-  ~0.30 toward ~0.45 — real traction, though deck-entanglement is not fully solved.
-* **Left:** single-game raw vs deck-normalised (RF/LDA, both directions). **Right:** the same, aggregated vs N.
+  (per-deck z-score). That removes the deck-level bias and lifts cross-deck ARI at N=10 from ~0.08 to
+  ~0.23, with the aggregated curve reaching ~0.44 (vs ~0.22 raw) by N=120 — real traction, though
+  deck-entanglement is not fully solved.
+* **Left:** ARI at N=10, raw vs deck-normalised (LDA, both directions). **Right:** the same, ARI vs N.
 """
 
 R6C = r'''
 # R6c — reviewer #3b: domain-shift correction (standardise WITHIN each deck)  [both decks]
+#      matched to R5/R6: LDA on N=10 fingerprints, scored by ARI (left = N=10 bars, right = ARI vs N)
 from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import adjusted_rand_score
 
 DA, DB   = "RenoKazakusMage", "AggroPirateWarrior"
 XFEATS   = list(AGNOSTIC_FEATURES)
+N_FP     = 10                                       # games averaged into one fingerprint
 
 def deck_zscore(df, feats):
     g = df.copy()
@@ -606,60 +632,61 @@ def deck_zscore(df, feats):
 
 games_dz = deck_zscore(games_all, XFEATS)          # domain-corrected features
 
-def cross_single(frame, a, b, feats, model="rf"):
-    tr, te = frame[frame["deck"] == a], frame[frame["deck"] == b]
-    med = tr[feats].median()                                   # impute from the TRAIN deck
-    Xtr, Xte = tr[feats].fillna(med).values, te[feats].fillna(med).values
-    ytr, yte = tr["style"].astype(str).values, te["style"].astype(str).values
-    sc = StandardScaler().fit(Xtr); Xtr, Xte = sc.transform(Xtr), sc.transform(Xte)
-    clf = (RandomForestClassifier(n_estimators=300, random_state=0, n_jobs=-1)
-           if model == "rf" else LinearDiscriminantAnalysis())
-    return accuracy_score(yte, clf.fit(Xtr, ytr).predict(Xte))
+def _fps_dz(by, N, reps, seed):
+    r = np.random.default_rng(seed); Xs, ys = [], []
+    for s in STYLE_ORDER:
+        for _ in range(reps):
+            Xs.append(by[s][r.integers(0, len(by[s]), N)].mean(0)); ys.append(s)
+    return np.array(Xs), np.array(ys)
 
-bars = {}
-for label, frame in [("raw V4 agnostic", games_all), ("deck-normalised", games_dz)]:
-    bars[label] = {"RF M->W":  cross_single(frame, DA, DB, XFEATS, "rf"),
-                   "RF W->M":  cross_single(frame, DB, DA, XFEATS, "rf"),
-                   "LDA M->W": cross_single(frame, DA, DB, XFEATS, "lda"),
-                   "LDA W->M": cross_single(frame, DB, DA, XFEATS, "lda")}
-barsdf = pd.DataFrame(bars)
-print("Single-game cross-deck accuracy (chance = 0.20):"); display(barsdf.round(3))
-
-def cross_agg(frame, a, b, feats, Ns=(1, 2, 3, 5, 8, 10, 15, 20, 25, 35, 50, 70, 90, 100, 120), reps=300):
+def cross_ari(frame, a, b, feats, N=N_FP, reps=300):
+    """train deck a -> test deck b: LDA on N-game fingerprints, scored by ARI."""
     tr, te = frame[frame["deck"] == a], frame[frame["deck"] == b]
     med = tr[feats].median()                                   # impute from the TRAIN deck
     Xtr, Xte = tr[feats].fillna(med).values, te[feats].fillna(med).values
     ytr, yte = tr["style"].astype(str).values, te["style"].astype(str).values
     sc = StandardScaler().fit(Xtr); Xtr, Xte = sc.transform(Xtr), sc.transform(Xte)
     trby = {s: Xtr[ytr == s] for s in STYLE_ORDER}; teby = {s: Xte[yte == s] for s in STYLE_ORDER}
-    def fps(by, N, seed):
-        r = np.random.default_rng(seed); Xs, ys = [], []
-        for si, s in enumerate(STYLE_ORDER):
-            for _ in range(reps):
-                Xs.append(by[s][r.integers(0, len(by[s]), N)].mean(0)); ys.append(si)
-        return np.array(Xs), np.array(ys)
+    Xa, ya = _fps_dz(trby, N, reps, 10); Xb, yb = _fps_dz(teby, N, reps, 20)
+    return adjusted_rand_score(yb, LinearDiscriminantAnalysis().fit(Xa, ya).predict(Xb))
+
+bars = {}
+for label, frame in [("raw V4 agnostic", games_all), ("deck-normalised", games_dz)]:
+    bars[label] = {"LDA M->W": cross_ari(frame, DA, DB, XFEATS),
+                   "LDA W->M": cross_ari(frame, DB, DA, XFEATS)}
+barsdf = pd.DataFrame(bars)
+print("Cross-deck ARI at N=10 fingerprints (LDA; chance ARI = 0):"); display(barsdf.round(3))
+
+def cross_agg_ari(frame, a, b, feats, Ns=(1, 2, 3, 5, 8, 10, 15, 20, 25, 35, 50, 70, 90, 100, 120), reps=300):
+    tr, te = frame[frame["deck"] == a], frame[frame["deck"] == b]
+    med = tr[feats].median()                                   # impute from the TRAIN deck
+    Xtr, Xte = tr[feats].fillna(med).values, te[feats].fillna(med).values
+    ytr, yte = tr["style"].astype(str).values, te["style"].astype(str).values
+    sc = StandardScaler().fit(Xtr); Xtr, Xte = sc.transform(Xtr), sc.transform(Xte)
+    trby = {s: Xtr[ytr == s] for s in STYLE_ORDER}; teby = {s: Xte[yte == s] for s in STYLE_ORDER}
     out = {}
     for N in Ns:
-        Xa, ya = fps(trby, N, 10); Xb, yb = fps(teby, N, 20)
-        out[N] = (LinearDiscriminantAnalysis().fit(Xa, ya).predict(Xb) == yb).mean()
+        Xa, ya = _fps_dz(trby, N, reps, 10); Xb, yb = _fps_dz(teby, N, reps, 20)
+        out[N] = adjusted_rand_score(yb, LinearDiscriminantAnalysis().fit(Xa, ya).predict(Xb))
     return pd.Series(out)
 
 fig, ax = plt.subplots(1, 2, figsize=(15, 5))
-barsdf.T.plot.bar(ax=ax[0]); ax[0].axhline(0.20, color="k", ls="--", lw=1, label="chance")
-ax[0].set_title("Single-game cross-deck: raw vs deck-normalised"); ax[0].set_ylabel("accuracy")
-ax[0].set_xticklabels(ax[0].get_xticklabels(), rotation=0); ax[0].legend(fontsize=8, ncol=3)
+barsdf.T.plot.bar(ax=ax[0]); ax[0].axhline(0.0, color="k", ls="--", lw=1, label="chance (ARI = 0)")
+ax[0].set_title("Cross-deck ARI at N=10: raw vs deck-normalised (LDA)"); ax[0].set_ylabel("ARI")
+ax[0].set_xticklabels(ax[0].get_xticklabels(), rotation=0); ax[0].legend(fontsize=8, ncol=2)
 for label, frame, ls in [("raw", games_all, "o-"), ("deck-normalised", games_dz, "s--")]:
-    s = (cross_agg(frame, DA, DB, XFEATS) + cross_agg(frame, DB, DA, XFEATS)) / 2
+    s = (cross_agg_ari(frame, DA, DB, XFEATS) + cross_agg_ari(frame, DB, DA, XFEATS)) / 2
     xs = range(len(s.index)); ax[1].plot(xs, s.values, ls, label=label)
-ax[1].axhline(0.9, color="green", ls=":", lw=1); ax[1].axhline(0.2, color="gray", ls=":", lw=1)
-ax[1].set_xticks(list(xs)); ax[1].set_xticklabels(s.index, rotation=45); ax[1].set_ylim(0, 1.02)
+ax[1].axhline(0.0, color="gray", ls=":", lw=1)
+ax[1].set_xticks(list(xs)); ax[1].set_xticklabels(s.index, rotation=45)
 ax[1].set_xlabel("games pooled per fingerprint (N)")
-ax[1].set_ylabel("cross-deck accuracy (mean of both directions)")
-ax[1].set_title("Aggregated cross-deck: raw vs deck-normalised"); ax[1].legend(fontsize=9)
+ax[1].set_ylabel("cross-deck ARI (mean of both directions)")
+ax[1].set_title("Aggregated cross-deck ARI vs N: raw vs deck-normalised (LDA)"); ax[1].legend(fontsize=9)
 fig.suptitle("R6c · Domain-shift correction — deviation from the same-deck average player", fontsize=13)
 fig.tight_layout(rect=[0, 0, 1, 0.95]); plt.show()
-print("Read: per-deck z-scoring removes the deck's overall bias; aggregated cross-deck accuracy "
-      "rises (~0.30 -> ~0.45), though deck-entanglement is not fully solved.")
+print("Read: per-deck z-scoring removes the deck's overall bias; cross-deck ARI rises from "
+      "~0.08 to ~0.23 at N=10 and reaches ~0.44 (vs ~0.22 raw) by N=120 — real traction, "
+      "though deck-entanglement is not fully solved.")
 '''
 
 CLOSE_MD = r"""
@@ -671,7 +698,7 @@ CLOSE_MD = r"""
 4. **R5 + R6 + R6b** — but that fingerprint is **deck-entangled**: cross-deck accuracy collapses to ~0.24,
    only `fatigue`/`ramp` transfer, and pooling can't rescue it → it's bias, not noise.
 5. **R6c** — first partial fix: deck-relative (per-deck z-scored) features lift aggregated cross-deck
-   accuracy ~0.30 → ~0.45. Fully deck-agnostic play-style inference is the open future-work item.
+   ARI toward ~0.44 (vs ~0.22 raw). Fully deck-agnostic play-style inference is the open future-work item.
 """
 
 
