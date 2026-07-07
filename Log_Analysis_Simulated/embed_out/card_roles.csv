@@ -1,0 +1,392 @@
+key,name,role,dist_to_centroid
+NEW1_024,Captain Greenskin,0,0.4901
+KAR_114,Barnes,0,0.5377
+OG_315,Bloodsail Cultist,0,0.5741
+EX1_116,Leeroy Jenkins,0,0.5918
+DAL_064,Blastmaster Boom,0,0.6125
+GIL_683,Marsh Drake,0,0.613
+EX1_089,Arcane Golem,0,0.6171
+AT_077,Argent Lance,0,0.6177
+DAL_087,Hench-Clan Hag,0,0.6295
+CFM_315,Alleycat,0,0.6304
+EX1_506,Murloc Tidehunter,0,0.6354
+CFM_717,Jade Claws,0,0.6596
+EX1_043,Twilight Drake,0,0.6687
+CFM_753,Grimestreet Outfitter,0,0.6745
+EX1_083,Tinkmaster Overspark,0,0.6793
+EX1_409,Upgrade!,0,0.6811
+CFM_651,Naga Corsair,0,0.6821
+TRL_251,Spirit of the Bat,0,0.6917
+EX1_538,Unleash the Hounds,0,0.7039
+EX1_562,Onyxia,0,0.7121
+EX1_382,Aldor Peacekeeper,0,0.7126
+EX1_025,Dragonling Mechanic,0,0.7258
+TRL_504,Booty Bay Bookie,0,0.73
+EX1_014t,Bananas,0,0.737
+GIL_623,Witchwood Grizzly,0,0.7372
+TRL_527,Drakkari Trickster,0,0.767
+CS2_022,Polymorph,0,0.7681
+NEW1_027,Southsea Captain,0,0.7683
+EX1_014,King Mukla,0,0.7697
+DRG_082,Kobold Stickyfinger,0,0.7733
+EX1_066,Acidic Swamp Ooze,0,0.7916
+CFM_305,Smuggler's Run,0,0.808
+GIL_513,Lost Spirit,0,0.8108
+ULD_212,Wild Bloodstinger,0,0.833
+DRG_059,Goboglide Tech,0,0.8342
+DAL_060,Clockwork Goblin,0,0.8901
+BOT_511,Seaforium Bomber,0,0.8901
+TRL_321,Devastate,1,0.416
+EX1_537,Explosive Shot,1,0.439
+DRG_321,Rolling Fireball,1,0.4847
+GIL_506,Cheap Shot,1,0.4991
+EX1_539,Kill Command,1,0.542
+BOT_453,Shooting Star,1,0.5523
+LOE_002t,Roaring Torch,1,0.555
+EX1_124,Eviscerate,1,0.5609
+CS2_072,Backstab,1,0.5708
+OG_086,Forbidden Flame,1,0.578
+CS2_024,Frostbolt,1,0.5824
+DRG_249,Awaken!,1,0.6079
+DAL_577,Ray of Frost,1,0.6092
+EX1_410,Shield Slam,1,0.6144
+EX1_275,Cone of Cold,1,0.6231
+AT_004,Arcane Blast,1,0.6295
+EX1_391,Slam,1,0.6314
+TRL_313,Scorch,1,0.6315
+DAL_770,Omega Devastator,1,0.6351
+EX1_279,Pyroblast,1,0.6586
+EX1_179,Icicle,1,0.6592
+EX1_308,Soulfire,1,0.6687
+EX1_607,Inner Rage,1,0.6792
+KAR_076,Firelands Portal,1,0.7021
+CS2_029,Fireball,1,0.7022
+EX1_408,Mortal Strike,1,0.7038
+LOE_002,Forgotten Torch,1,0.7051
+TRL_360,Overlord's Whip,1,0.7196
+CFM_707,Jade Lightning,1,0.7308
+NEW1_019,Knife Juggler,1,0.7332
+EX1_238,Lightning Bolt,1,0.7425
+EX1_603,Cruel Taskmaster,1,0.7552
+DAL_182,Magic Dart Frog,1,0.7734
+GIL_152,Blackhowl Gunspire,1,0.7807
+CS2_181,Injured Blademaster,1,0.7966
+BRM_013,Quick Shot,1,0.8004
+DRG_023,Skybarge,1,0.8053
+TRL_512,Cheaty Anklebiter,1,0.8262
+GIL_801,Snap Freeze,1,0.8799
+EX1_110,Cairne Bloodhoof,2,0.6115
+EX1_560,Nozdormu,2,0.6376
+CFM_685,Don Han'Cho,2,0.6445
+CFM_902,Aya Blackpaw,2,0.6772
+LOE_011,Reno Jackson,2,0.6836
+EX1_383,Tirion Fordring,2,0.692
+ULD_156,Dinotamer Brann,2,0.6991
+EX1_016,Sylvanas Windrunner,2,0.7288
+EX1_561,Alexstrasza,2,0.732
+NEW1_030,Deathwing,2,0.7367
+CFM_621,Kazakus,2,0.7395
+EX1_563,Malygos,2,0.7467
+EX1_067,Argent Commander,2,0.7601
+CS2_042,Fire Elemental,2,0.768
+NEW1_010,Al'Akir the Windlord,2,0.7695
+DRG_090,Murozond the Infinite,2,0.7921
+TRL_341,Treespeaker,2,0.8391
+EX1_362,Argent Protector,2,0.8635
+AT_087,Argent Horserider,2,0.8763
+DAL_085,Dalaran Crusader,2,0.879
+EX1_534,Savannah Highmane,2,0.8938
+CS2_118,Magma Rager,3,0.5896
+CS2_033,Water Elemental,3,0.6467
+CS2_106,Fiery War Axe,3,0.6563
+CS2_112,Arcanite Reaper,3,0.6563
+CS2_011,Savage Roar,3,0.7354
+NEW1_011,Kor'kron Elite,3,0.7393
+EX1_565,Flametongue Totem,3,0.7432
+DREAM_03,Emerald Drake,3,0.7437
+CS2_023,Arcane Intellect,3,0.7583
+TRL_532,Mosh'Ogg Announcer,3,0.7657
+EX1_622,Shadow Word: Death,3,0.7674
+CS2_168,Murloc Raider,3,0.771
+NEW1_031,Animal Companion,3,0.7777
+DS1_175,Timber Wolf,3,0.7876
+CS2_200,Boulderfist Ogre,3,0.8043
+DS1_070,Houndmaster,3,0.8139
+EX1_507,Murloc Warleader,3,0.8155
+GIL_156,Quartz Elemental,3,0.8319
+CS2_173,Bluegill Warrior,3,0.8345
+CS2_103,Charge,3,0.8376
+GIL_113,Rabid Worgen,3,0.8519
+DAL_434,Arcane Watcher,3,0.8536
+BOT_604,Cosmic Anomaly,3,0.8556
+CS2_097,Truesilver Champion,3,0.8631
+ULD_206,Restless Mummy,3,0.8666
+GIL_562,Vilebrood Skitterer,3,0.8693
+DRG_211,Squallhunter,3,0.9143
+tt_010,Spellbender,4,0.6469
+DRG_323,Learn Draconic,4,0.6616
+AT_060,Bear Trap,4,0.6846
+AT_042,Druid of the Saber,4,0.6965
+EX1_165,Druid of the Claw,4,0.7269
+DRG_324,Elemental Allies,4,0.7302
+DAL_578,Power of Creation,4,0.7473
+AT_037,Living Roots,4,0.7586
+EX1_554,Snake Trap,4,0.7643
+TRL_400,Splitting Image,4,0.778
+EX1_294,Mirror Entity,4,0.7826
+DAL_582,Portal Keeper,4,0.7858
+EX1_246,Hex,4,0.7859
+ULD_726,Ancient Mysteries,4,0.7867
+BOT_254,Unexpected Results,4,0.7884
+CS2_234,Shadow Word: Pain,4,0.7903
+CS2_027,Mirror Image,4,0.7925
+DAL_177,Conjurer's Calling,4,0.7926
+GIL_548,Book of Specters,4,0.8011
+DAL_608,Magic Trick,4,0.8077
+EX1_533,Misdirection,4,0.8138
+DAL_576,Kirin Tor Tricaster,4,0.8165
+TRL_531,Rumbletusk Shaker,4,0.8256
+NEW1_023,Faerie Dragon,4,0.8547
+BOT_537,Mechano-Egg,4,0.8561
+EX1_289,Ice Barrier,4,0.8639
+DRG_073,Evasive Feywing,4,0.8703
+DREAM_01,Laughing Sister,4,0.8734
+DRG_310,Evasive Drakonid,4,0.8735
+DRG_079,Evasive Wyrm,4,0.9086
+BOT_600,Research Project,4,0.9348
+GIL_620,Dollmaster Dorian,5,0.5935
+TRL_315,Pyromaniac,5,0.6295
+TRL_223,Spirit of the Raptor,5,0.6467
+GIL_640,Curio Collector,5,0.6747
+EX1_614,Illidan Stormrage,5,0.6758
+EX1_007,Acolyte of Pain,5,0.6821
+EX1_095,Gadgetzan Auctioneer,5,0.6843
+GIL_691,Archmage Arugal,5,0.6854
+CS2_235,Northshire Cleric,5,0.6893
+GIL_190,Nightscale Matriarch,5,0.6893
+EX1_100,Lorewalker Cho,5,0.6902
+EX1_044,Questing Adventurer,5,0.6977
+GIL_655,Festeroot Hulk,5,0.7023
+UNG_843,The Voraxx,5,0.7067
+CFM_344,"Finja, the Flying Star",5,0.7227
+GIL_664,Vex Crow,5,0.7246
+EX1_509,Murloc Tidecaller,5,0.7265
+DAL_771,Soldier of Fortune,5,0.7306
+EX1_402,Armorsmith,5,0.7351
+EX1_531,Scavenging Hyena,5,0.7379
+EX1_604,Frothing Berserker,5,0.7505
+NEW1_012,Mana Wyrm,5,0.7542
+TRL_502,Spirit of the Dead,5,0.7546
+EX1_080,Secretkeeper,5,0.7698
+DRG_104,Chenvaala,5,0.7717
+ULD_720,Bloodsworn Mercenary,5,0.7734
+EX1_536,Eaglehorn Bow,5,0.7742
+GIL_580,Town Crier,5,0.7937
+EX1_284,Azure Drake,5,0.7943
+GIL_815,Baleful Banker,5,0.797
+DRG_054,Big Ol' Whelp,5,0.7981
+EX1_012,Bloodmage Thalnos,5,0.8141
+DAL_773,Magic Carpet,5,0.8147
+BOT_103,Stargazer Luna,5,0.8215
+BOT_059,Eternium Rover,5,0.8225
+DRG_056,Parachute Brigand,5,0.8256
+CS2_004,Power Word: Shield,5,0.8257
+TRL_570,Soup Vendor,5,0.8293
+ULD_236,Tortollan Pilgrim,5,0.8353
+OG_048,Mark of Y'Shaarj,5,0.8361
+KAR_035,Priest of the Feast,5,0.8501
+GIL_645,Bonfire Elemental,5,0.8505
+BOT_288,Lab Recruiter,5,0.8587
+DAL_759,Vicious Scraphound,5,0.8605
+DAL_732,Keeper Stalladris,5,0.8609
+EX1_191,Plaguebringer,5,0.8626
+DRG_025,Ancharrr,5,0.8713
+CFM_637,Patches the Pirate,5,0.8783
+DAL_077,Toxfin,5,0.8817
+GIL_653,Woodcutter's Axe,5,0.89
+ULD_709,Armored Goon,5,0.8994
+GIL_809,Unpowered Steambot,6,0.4049
+EX1_250,Earth Elemental,6,0.4643
+CS2_179,Sen'jin Shieldmasta,6,0.472
+CS2_125,Ironfur Grizzly,6,0.472
+CS2_127,Silverback Patriarch,6,0.472
+DRG_242,Shield of Galakrond,6,0.4923
+CS2_065,Voidwalker,6,0.5073
+CS2_121,Frostwolf Grunt,6,0.5073
+AT_132_SHAMANc,Stoneclaw Totem,6,0.522
+ULD_195,Frightened Flunky,6,0.571
+ULD_189,Faceless Lurker,6,0.6344
+CFM_790,Dirty Rat,6,0.6927
+NEW1_022,Dread Corsair,6,0.6984
+TRL_551,Reckless Diretroll,6,0.705
+TRL_524,Shieldbreaker,6,0.7232
+EX1_097,Abomination,6,0.7608
+OG_028,Thing from Below,6,0.7739
+BOT_548,Zilliax,6,0.8931
+HERO_08b,Khadgar,6,1.0246
+KAR_300,Enchanted Raven,7,0.4406
+EX1_tk28,Squirrel,7,0.4406
+CS2_231,Wisp,7,0.4406
+EX1_010,Worgen Infiltrator,7,0.5626
+AT_052,Totem Golem,7,0.6176
+CFM_712_t01,Jade Golem,7,0.6186
+BRM_004t,Whelp,7,0.6186
+CFM_621_m5,Sheep,7,0.6186
+EX1_608,Sorcerer's Apprentice,7,0.6863
+OG_312,N'Zoth's First Mate,7,0.6936
+CS2_146,Southsea Deckhand,7,0.6941
+EX1_162,Dire Wolf Alpha,7,0.7078
+ICC_809e,Test Subject,7,0.7577
+NEW1_018,Bloodsail Raider,7,0.7614
+EX1_017,Jungle Panther,7,0.7646
+LOE_018,Tunnel Trogg,7,0.7789
+ULD_450,Vilefiend,7,0.8068
+GIL_558,Swamp Leech,7,0.8068
+KAR_063,Spirit Claws,7,0.8072
+EX1_319,Flame Imp,7,0.8143
+GIL_155,Redband Wasp,7,0.8155
+KAR_006,Cloaked Huntress,7,0.8201
+BOT_102t,Spark,7,0.8385
+CFM_325,Small-Time Buccaneer,7,0.86
+CS2_073,Cold Blood,7,0.8751
+DRG_270,"Malygos, Aspect of Magic",8,0.4557
+KAR_062,Netherspite Historian,8,0.4634
+TRL_323,Emberscale Drake,8,0.4973
+CFM_605,Drakonid Operative,8,0.531
+BRM_034,Blackwing Corruptor,8,0.5349
+AT_017,Twilight Guardian,8,0.5592
+DRG_106,Arcane Breath,8,0.5621
+TRL_569,Crowd Roaster,8,0.5758
+BRM_004,Twilight Whelp,8,0.5761
+AT_116,Wyrmrest Agent,8,0.5902
+GIL_635,Cathedral Gargoyle,8,0.6045
+DRG_052,Draconic Lackey,8,0.6055
+DRG_229,Bronze Explorer,8,0.6234
+DRG_322,Dragoncaster,8,0.6347
+KAR_033,Book Wyrm,8,0.6545
+DRG_304,Chronobreaker,8,0.6617
+DRG_313,Emerald Explorer,8,0.6631
+DRG_102,Azure Explorer,8,0.6724
+DRG_063,Dragonmaw Poacher,8,0.709
+ULD_293,Cloud Prince,8,0.7119
+ULD_137,Garden Gnome,8,0.752
+DAL_163,Messenger Raven,8,0.7559
+AT_123,Chillmaw,8,0.7574
+GIL_681,Nightmare Amalgam,8,0.7614
+BOT_299,Omega Assembly,8,0.7706
+ULD_209,Vulpera Scoundrel,8,0.7725
+BOT_243,Myra Rotspring,8,0.7978
+DRG_203,Veiled Worshipper,8,0.847
+GIL_116,Arcane Keysmith,8,0.851
+LOE_076,Sir Finley Mrrgglton,8,0.8628
+TRL_327,Spirit of the Rhino,9,0.5586
+EX1_612,Kirin Tor Mage,9,0.6255
+EX1_274,Ethereal Arcanist,9,0.6422
+BOT_531,Celestial Emissary,9,0.6494
+ULD_198,Conjured Mirage,9,0.6553
+NEW1_021,Doomsayer,9,0.6576
+CFM_639,Grimestreet Enforcer,9,0.6729
+TRL_310,Elemental Evocation,9,0.6809
+EX1_004,Young Priestess,9,0.6831
+ULD_168,Dark Pharaoh Tekahn,9,0.6846
+DREAM_05,Nightmare,9,0.7017
+TRL_319,Spirit of the Dragonhawk,9,0.7067
+ULD_258,Armagedillo,9,0.7152
+TRL_390,Daring Fire-Eater,9,0.719
+NEW1_040,Hogger,9,0.7236
+CS2_059,Blood Imp,9,0.7249
+TRL_522,Wartbringer,9,0.725
+DRG_074,Camouflaged Dirigible,9,0.7287
+AT_039,Savage Combatant,9,0.7312
+EX1_572,Ysera,9,0.7356
+EX1_298,Ragnaros the Firelord,9,0.7513
+EX1_085,Mind Control Tech,9,0.7543
+NEW1_014,Master of Disguise,9,0.7613
+GIL_565,Deathweb Spider,9,0.7634
+NEW1_029,Millhouse Manastorm,9,0.7724
+CS2_105,Heroic Strike,9,0.7831
+EX1_613,Edwin VanCleef,9,0.7845
+DRG_300,Fate Weaver,9,0.7895
+TRL_311,Arcanosaur,9,0.7901
+GIL_803,Militia Commander,9,0.799
+BOT_566,Reckless Experimenter,9,0.8094
+BOT_257,Luna's Pocket Galaxy,9,0.8121
+CS2_188,Abusive Sergeant,9,0.8134
+DRG_109,Mana Giant,9,0.8142
+DRG_019,Scion of Ruin,9,0.8175
+BOT_283,Pogo-Hopper,9,0.8236
+DAL_800,"Zayle, Shadow Cloak",9,0.8338
+BOT_914,Whizbang the Wonderful,9,0.838
+CFM_630,Counterfeit Coin,9,0.8429
+ULD_705,Mogu Cultist,9,0.8512
+ULD_138,Anubisath Defender,9,0.8562
+EX1_169,Innervate,9,0.8781
+DAL_062,Sweeping Strikes,9,0.8883
+ULD_256,Into the Fray,9,0.9282
+DRG_024,Sky Raider,10,0.3878
+DAL_413,EVIL Conscripter,10,0.4192
+GIL_549,"Toki, Time-Tinker",10,0.4285
+ULD_282,Jar Dealer,10,0.442
+EX1_180,Tome of Intellect,10,0.4851
+KAR_009,Babbling Book,10,0.4901
+TRL_318,Hex Lord Malacrass,10,0.5268
+LOE_012,Tomb Pillager,10,0.5421
+TRL_362,Dragon Roar,10,0.5505
+EX1_189,Brightwing,10,0.5628
+BOT_101,Astral Rift,10,0.5873
+BOT_256,Astromancer,10,0.5894
+DRG_107,Violet Spellwing,10,0.5951
+DAL_049,Underbelly Angler,10,0.6033
+KAR_069,Swashburglar,10,0.6035
+TRL_317,Blast Wave,10,0.6077
+DRG_089,Dragonqueen Alexstrasza,10,0.6107
+DRG_020,EVIL Quartermaster,10,0.6113
+DAL_769,Improve Morale,10,0.6366
+DRG_075,Cobalt Spellkin,10,0.643
+ULD_329,Dune Sculptor,10,0.6454
+UNG_027,Pyros,10,0.6602
+DAL_719,Tak Nozwhisker,10,0.6662
+BOT_084,Violet Haze,10,0.6894
+DREAM_04,Dream,10,0.7011
+NEW1_005,Kidnapper,10,0.7311
+DRG_070,Dragon Breeder,10,0.7324
+DAL_603,Mana Cyclone,10,0.7356
+EX1_057,Ancient Brewmaster,10,0.7495
+EX1_559,Archmage Antonidas,10,0.7585
+BOT_538,Spark Engine,10,0.7771
+ULD_435,Naga Sand Witch,10,0.7906
+TRL_505,Helpless Hatchling,10,0.791
+TRL_328,War Master Voone,10,0.8053
+EX1_581,Sap,10,0.8114
+CS2_025,Arcane Explosion,11,0.4287
+CS2_012,Swipe,11,0.4334
+CS2_032,Flamestrike,11,0.4452
+EX1_400,Whirlwind,11,0.4499
+DREAM_02,Ysera Awakens,11,0.4934
+CS2_028,Blizzard,11,0.5074
+CFM_662,Dragonfire Potion,11,0.5258
+TRL_526,Dragonmaw Scorcher,11,0.5313
+EX1_259,Lightning Storm,11,0.5699
+CS1_112,Holy Nova,11,0.5918
+EX1_277,Arcane Missiles,11,0.5926
+EX1_129,Fan of Knives,11,0.6135
+CS2_114,Cleave,11,0.618
+GIL_147,Cinderstorm,11,0.6275
+ULD_239,Flame Ward,11,0.6315
+DAL_775,Tunnel Blaster,11,0.6465
+DRG_213,Twin Tyrant,11,0.6553
+KAR_073,Maelstrom Portal,11,0.663
+ULD_238,Reno the Relicologist,11,0.6692
+CS2_026,Frost Nova,11,0.6744
+CS2_075,Sinister Strike,11,0.6753
+ULD_240,Arcane Flakmage,11,0.6876
+EX1_082,Mad Bomber,11,0.6926
+BOT_544,Loose Specimen,11,0.6929
+BOT_104,Dyn-o-matic,11,0.7298
+ULD_196,Neferset Ritualist,11,0.7435
+EX1_593,Nightblade,11,0.7719
+GIL_622,Lifedrinker,11,0.7968
+EX1_610,Explosive Trap,11,0.8014
+GIL_661,Divine Hymn,11,0.8457
+DRG_026,"Deathwing, Mad Aspect",11,0.8632
+DAL_544,Potion Vendor,11,0.8731

@@ -1,0 +1,24 @@
+R0  ( 37 cards)  terms: 1, battlecry, mech_battlecry, your, give, cost_mid
+    e.g. Captain Greenskin, Barnes, Bloodsail Cultist, Leeroy Jenkins, Blastmaster Boom, Marsh Drake, Arcane Golem, Argent Lance
+R1  ( 39 cards)  terms: damage, deal, type_spell, to, minion, a
+    e.g. Devastate, Explosive Shot, Rolling Fireball, Cheap Shot, Kill Command, Shooting Star, Roaring Torch, Eviscerate
+R2  ( 21 cards)  terms: cost_high, rarity_legendary, type_minion, battlecry, mech_battlecry, divine
+    e.g. Cairne Bloodhoof, Nozdormu, Don Han'Cho, Aya Blackpaw, Reno Jackson, Tirion Fordring, Dinotamer Brann, Sylvanas Windrunner
+R3  ( 27 cards)  terms: rarity_free, cost_mid, type_minion, attack, 2, rush
+    e.g. Magma Rager, Water Elemental, Fiery War Axe, Arcanite Reaper, Savage Roar, Kor'kron Elite, Flametongue Totem, Emerald Drake
+R4  ( 31 cards)  terms: type_spell, summon, a, 2, or, hero
+    e.g. Spellbender, Learn Draconic, Bear Trap, Druid of the Saber, Druid of the Claw, Elemental Allies, Power of Creation, Living Roots
+R5  ( 51 cards)  terms: a, whenever, minion, type_minion, 1, draw
+    e.g. Dollmaster Dorian, Pyromaniac, Spirit of the Raptor, Curio Collector, Illidan Stormrage, Acolyte of Pain, Gadgetzan Auctioneer, Archmage Arugal
+R6  ( 19 cards)  terms: taunt, mech_taunt, type_minion, cost_mid, rarity_free, cost_low
+    e.g. Unpowered Steambot, Earth Elemental, Sen'jin Shieldmasta, Ironfur Grizzly, Silverback Patriarch, Shield of Galakrond, Voidwalker, Frostwolf Grunt
+R7  ( 25 cards)  terms: cost_low, rarity_common, type_minion, attack, 1, have
+    e.g. Enchanted Raven, Squirrel, Wisp, Worgen Infiltrator, Totem Golem, Jade Golem, Whelp, Sheep
+R8  ( 30 cards)  terms: dragon, battlecry, a, if, holding, re
+    e.g. Malygos, Aspect of Magic, Netherspite Historian, Emberscale Drake, Drakonid Operative, Blackwing Corruptor, Twilight Guardian, Arcane Breath, Crowd Roaster
+R9  ( 44 cards)  terms: turn, your, the, this, of, type_minion
+    e.g. Spirit of the Rhino, Kirin Tor Mage, Ethereal Arcanist, Celestial Emissary, Conjured Mirage, Doomsayer, Grimestreet Enforcer, Elemental Evocation
+R10 ( 35 cards)  terms: hand, add, your, to, random, a
+    e.g. Sky Raider, EVIL Conscripter, Toki, Time-Tinker, Jar Dealer, Tome of Intellect, Babbling Book, Hex Lord Malacrass, Tomb Pillager
+R11 ( 32 cards)  terms: all, deal, damage, minions, to, type_spell
+    e.g. Arcane Explosion, Swipe, Flamestrike, Whirlwind, Ysera Awakens, Blizzard, Dragonfire Potion, Dragonmaw Scorcher

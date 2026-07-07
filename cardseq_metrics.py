@@ -110,7 +110,7 @@ FEATURE_ORIGIN = {
     "avg_card_cost":         ("surviving", "V1-V4", "curve"),
     "max_card_cost":         ("surviving", "V3/V4", "ramp"),
     "mana_spent":            ("surviving", "V1",    "-"),
-    "mana_eff":              z("surviving", "V1-V4", "tempo"),
+    "mana_eff":              ("surviving", "V1-V4", "tempo"),
     "mana_per_turn":         ("surviving", "V1",    "tempo"),
     "mana_floated_per_turn": ("surviving", "V4",    "control"),
     "minion_fraction":       ("surviving", "V2-V4", "midrange"),
