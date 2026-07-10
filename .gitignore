@@ -23,3 +23,5 @@ Seminar/
 
 log/*
 !log/run_batch_matrix.py
+
+log_v2/*

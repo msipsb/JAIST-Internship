@@ -87,27 +87,32 @@ def build_units(df, group_col, n, seed):
 
 # ---------------------------------------------------------------- fingerprints
 
-def fingerprints(feat_mat, units):
+def fingerprints(feat_mat, units, standardize=True):
     """Per-unit reference & query fingerprints.
 
-    Impute (median) and z-score using REFERENCE-set stats only (all reference
-    rows across units), then average per unit half.  feat_mat: (n_games, n_feat).
+    standardize=True (hand features): impute (median) and z-score using
+    REFERENCE-set stats only, then average per unit half.
+    standardize=False (learned L2-normalized game vectors): just mean-pool.
+    feat_mat: (n_games, n_feat).
     """
-    ref_all = np.concatenate([u.ref_pos for u in units])
-    Xref = feat_mat[ref_all]
+    if standardize:
+        ref_all = np.concatenate([u.ref_pos for u in units])
+        Xref = feat_mat[ref_all]
+        med = np.nanmedian(Xref, axis=0)
+        med = np.where(np.isnan(med), 0.0, med)
+        Xref_i = np.where(np.isnan(Xref), med, Xref)
+        mu = Xref_i.mean(axis=0)
+        sd = Xref_i.std(axis=0)
+        sd = np.where(sd == 0, 1.0, sd)
 
-    med = np.nanmedian(Xref, axis=0)
-    med = np.where(np.isnan(med), 0.0, med)
-    Xref_i = np.where(np.isnan(Xref), med, Xref)
-    mu = Xref_i.mean(axis=0)
-    sd = Xref_i.std(axis=0)
-    sd = np.where(sd == 0, 1.0, sd)
-
-    def fp(pos):
-        X = feat_mat[pos]
-        X = np.where(np.isnan(X), med, X)
-        X = (X - mu) / sd
-        return X.mean(axis=0)
+        def fp(pos):
+            X = np.where(np.isnan(feat_mat[pos]), med, feat_mat[pos])
+            return ((X - mu) / sd).mean(axis=0)
+    else:
+        # pre-normalized learned vectors: mean-pool raw (no impute/z-score)
+        def fp(pos):
+            X = np.where(np.isnan(feat_mat[pos]), 0.0, feat_mat[pos])
+            return X.mean(axis=0)
 
     ref_fps = np.vstack([fp(u.ref_pos) for u in units])
     qry_fps = np.vstack([fp(u.qry_pos) for u in units])
@@ -200,7 +205,8 @@ def score_matched(units, ref_fps, qry_fps, C):
                 chance=1.0 / C, n_units=nq)
 
 
-def deck_recognition(df, n_sweep, C=10, seed=0, feature_cols=None, feature_name="cardseq"):
+def deck_recognition(df, n_sweep, C=10, seed=0, feature_cols=None, feature_name="cardseq",
+                     standardize=True, stage="baseline"):
     """Isolate deck recognition on IDENTICAL units.
 
     Fix the unit = one (user, archetype) pilot fingerprint.  For each pilot query,
@@ -221,7 +227,7 @@ def deck_recognition(df, n_sweep, C=10, seed=0, feature_cols=None, feature_name=
         units = build_units(df, "archetype", n, seed)
         if len(units) < C:
             continue
-        ref_fps, qry_fps = fingerprints(mat, units)
+        ref_fps, qry_fps = fingerprints(mat, units, standardize=standardize)
         R, Q = _l2(ref_fps), _l2(qry_fps)
         users = np.array([u.user for u in units])
         arche = np.array([u.group for u in units])
@@ -240,7 +246,7 @@ def deck_recognition(df, n_sweep, C=10, seed=0, feature_cols=None, feature_name=
                 top1 += comb(G - 1 - b, C - 1) / comb(G - 1, C - 1)
                 nq += 1
             if nq:
-                rows.append(dict(stage="baseline", pool=f"pilot|distractors={scope_name}",
+                rows.append(dict(stage=stage, pool=f"pilot|distractors={scope_name}",
                                  feature_set=feature_name, N=n, retrieval=f"matched-C{C}",
                                  top1=top1 / nq, top5=np.nan, mrr=np.nan,
                                  chance=1.0 / C, n_units=nq))
@@ -249,7 +255,8 @@ def deck_recognition(df, n_sweep, C=10, seed=0, feature_cols=None, feature_name=
 
 # ---------------------------------------------------------------- driver
 
-def run_pool(df, stage, pool, group_col, fsets, n_sweep, seed=0, matched_C=10):
+def run_pool(df, stage, pool, group_col, fsets, n_sweep, seed=0, matched_C=10,
+             standardize=True):
     """Sweep N for one pool across all feature sets.
 
     Emits two retrieval views per (N, feature_set):
@@ -263,7 +270,7 @@ def run_pool(df, stage, pool, group_col, fsets, n_sweep, seed=0, matched_C=10):
         if len(units) < 2:
             continue
         for name, mat in mats.items():
-            ref_fps, qry_fps = fingerprints(mat, units)
+            ref_fps, qry_fps = fingerprints(mat, units, standardize=standardize)
             full = score(units, ref_fps, qry_fps)
             if full is not None:
                 rows.append(dict(stage=stage, pool=pool, feature_set=name, N=n,

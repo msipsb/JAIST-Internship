@@ -147,6 +147,37 @@ def build_role_index(k_range=range(6, 15), svd_dims=30, seed=0,
     return idx
 
 
+def load_lsa_card_vectors(dims=32, seed=0, cache=None, verbose=True):
+    """id -> frozen LSA text vector (TF-IDF + TruncatedSVD, L2-normalized).
+
+    Used by Stage-2 GE2E variant (b) as deck-safer card representations.
+    Returns (dict id->np.float32[dim], dim).
+    """
+    if cache and Path(cache).exists():
+        d = pd.read_pickle(cache)
+        if verbose:
+            print(f"[lsa] loaded cached card vectors ({len(d['vecs'])} cards, dim {d['dim']})")
+        return d["vecs"], d["dim"]
+
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.decomposition import TruncatedSVD
+    from sklearn.preprocessing import normalize
+
+    docs = load_card_documents()
+    ids = list(docs)
+    X = TfidfVectorizer(min_df=3, max_df=0.6, sublinear_tf=True).fit_transform(
+        [docs[i] for i in ids])
+    dim = min(dims, X.shape[1] - 1)
+    Z = normalize(TruncatedSVD(n_components=dim, random_state=seed).fit_transform(X))
+    vecs = {cid: Z[i].astype("float32") for i, cid in enumerate(ids)}
+    if verbose:
+        print(f"[lsa] built {len(vecs)} card vectors, dim {dim}")
+    if cache:
+        Path(cache).parent.mkdir(parents=True, exist_ok=True)
+        pd.to_pickle({"vecs": vecs, "dim": dim}, cache)
+    return vecs, dim
+
+
 ROLE_ENTROPY = "role_entropy"
 ROLE_DISTINCT = "role_distinct_ratio"
 ROLE_UNKNOWN = "role_unknown_frac"

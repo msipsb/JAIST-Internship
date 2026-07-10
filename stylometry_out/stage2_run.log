@@ -1,0 +1,97 @@
+device: cpu   steps=1200  seeds=[0, 1]  eval_every=300
+[tokens] loaded cache: 250,260 games, 1767 cards
+[split] train=121  val=20  eval=44  (no overlap asserted)
+[baseline44] rebuilt 'both' on the 44 eval users
+
+=== Overfit sanity (8 users; training re-ID must approach 1.0) ===
+D:\test\stylometry_ge2e.py:163: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.enc = nn.TransformerEncoder(layer, n_layers)
+[sanity] 8-user training re-ID full-pool top-1 @N=20 = 1.000 (chance 0.125)  -> PASS
+
+=== Variant a_embed  {'card_mode': 'embed', 'encoder': 'transformer', 'adversarial': False} ===
+D:\test\stylometry_ge2e.py:163: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.enc = nn.TransformerEncoder(layer, n_layers)
+    [a_embed.s0] step   300  loss 2.041  val matched-C10@N20 0.939  (best 0.939)
+    [a_embed.s0] step   600  loss 2.109  val matched-C10@N20 0.913  (best 0.939)
+    [a_embed.s0] step   900  loss 1.384  val matched-C10@N20 0.926  (best 0.939)
+    [a_embed.s0] step  1200  loss 1.230  val matched-C10@N20 0.903  (best 0.939)
+  [a_embed seed0] best val 0.939 @step 300
+D:\test\stylometry_ge2e.py:163: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.enc = nn.TransformerEncoder(layer, n_layers)
+    [a_embed.s1] step   300  loss 1.901  val matched-C10@N20 0.791  (best 0.791)
+    [a_embed.s1] step   600  loss 1.466  val matched-C10@N20 0.771  (best 0.791)
+    [a_embed.s1] step   900  loss 1.636  val matched-C10@N20 0.832  (best 0.832)
+    [a_embed.s1] step  1200  loss 1.189  val matched-C10@N20 0.834  (best 0.834)
+  [a_embed seed1] best val 0.834 @step 1200
+
+=== Variant b_lsa  {'card_mode': 'lsa', 'encoder': 'transformer', 'adversarial': False} ===
+[lsa] loaded cached card vectors (3014 cards, dim 32)
+D:\test\stylometry_ge2e.py:163: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.enc = nn.TransformerEncoder(layer, n_layers)
+    [b_lsa.s0] step   300  loss 2.321  val matched-C10@N20 0.728  (best 0.728)
+    [b_lsa.s0] step   600  loss 2.253  val matched-C10@N20 0.832  (best 0.832)
+    [b_lsa.s0] step   900  loss 1.813  val matched-C10@N20 0.825  (best 0.832)
+    [b_lsa.s0] step  1200  loss 1.524  val matched-C10@N20 0.825  (best 0.832)
+  [b_lsa seed0] best val 0.832 @step 600
+[lsa] loaded cached card vectors (3014 cards, dim 32)
+D:\test\stylometry_ge2e.py:163: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.enc = nn.TransformerEncoder(layer, n_layers)
+    [b_lsa.s1] step   300  loss 2.238  val matched-C10@N20 0.732  (best 0.732)
+    [b_lsa.s1] step   600  loss 1.778  val matched-C10@N20 0.727  (best 0.732)
+    [b_lsa.s1] step   900  loss 1.962  val matched-C10@N20 0.798  (best 0.798)
+    [b_lsa.s1] step  1200  loss 1.490  val matched-C10@N20 0.848  (best 0.848)
+  [b_lsa seed1] best val 0.848 @step 1200
+
+=== Variant b_lsa_adv  {'card_mode': 'lsa', 'encoder': 'transformer', 'adversarial': True} ===
+[lsa] loaded cached card vectors (3014 cards, dim 32)
+D:\test\stylometry_ge2e.py:163: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.enc = nn.TransformerEncoder(layer, n_layers)
+    [b_lsa_adv.s0] step   300  loss 8.632  val matched-C10@N20 0.770  (best 0.770)
+    [b_lsa_adv.s0] step   600  loss 8.394  val matched-C10@N20 0.814  (best 0.814)
+    [b_lsa_adv.s0] step   900  loss 8.001  val matched-C10@N20 0.862  (best 0.862)
+    [b_lsa_adv.s0] step  1200  loss 7.620  val matched-C10@N20 0.825  (best 0.862)
+  [b_lsa_adv seed0] best val 0.862 @step 900
+[lsa] loaded cached card vectors (3014 cards, dim 32)
+D:\test\stylometry_ge2e.py:163: UserWarning: enable_nested_tensor is True, but self.use_nested_tensor is False because encoder_layer.norm_first was True
+  self.enc = nn.TransformerEncoder(layer, n_layers)
+    [b_lsa_adv.s1] step   300  loss 8.507  val matched-C10@N20 0.822  (best 0.822)
+    [b_lsa_adv.s1] step   600  loss 8.195  val matched-C10@N20 0.779  (best 0.822)
+    [b_lsa_adv.s1] step   900  loss 8.133  val matched-C10@N20 0.835  (best 0.835)
+    [b_lsa_adv.s1] step  1200  loss 7.787  val matched-C10@N20 0.768  (best 0.835)
+  [b_lsa_adv seed1] best val 0.835 @step 900
+
+Appended 441 rows -> stylometry_out\stylometry_results.csv
+Figure -> stylometry_out\fig_stage2_top1_vs_N.png
+
+# Stage 2 -- GE2E learned embeddings (summary)
+
+Open-set: 44 held-out eval users (never trained on), reference/query halves = Stage-1 splits/seeds.  Fingerprint = mean of learned game vectors, matched-C10 retrieval (chance 0.100).  Baseline 'both' is rebuilt on the SAME 44 users.
+
+**Caveat**: eval pool is 44 users vs Stage-1's 164, so full-pool chance differs; matched-C10 is the apples-to-apples comparison.
+
+## matched-C10 top-1 @N=50 (mean}sd over 2 seeds)
+
+| model | all-users | within-class | within-archetype |
+|-------|----------:|-------------:|-----------------:|
+| baseline 'both' (44u) | 0.823}0.000 | 0.842}0.000 | 0.500}0.000 |
+| GE2E (a) embed | 0.974}0.026 | 0.968}0.010 | 0.750}0.050 |
+| GE2E (b) LSA | 0.958}0.010 | 0.948}0.022 | 0.850}0.050 |
+| GE2E (b)+adversarial | 0.954}0.008 | 0.928}0.005 | 0.700}0.100 |
+
+## Deck-recognition gap (identical pilots; all vs same-archetype distractors)
+
+| model | distractors=all | distractors=archetype | gap |
+|-------|----------------:|----------------------:|----:|
+| baseline 'both' | 0.983 | 0.500 | 0.483 |
+| GE2E (a) embed | 0.995 | 0.750 | 0.245 |
+| GE2E (b) LSA | 0.992 | 0.850 | 0.142 |
+| GE2E (b)+adv | 0.991 | 0.700 | 0.291 |
+
+## Answers
+
+1. **Beat baseline within-archetype?** baseline 'both' = 0.500; best learned = 0.850. -> YES (matched-C10 top-1 @N=50).
+2. **Adversarial shrinks the deck gap?** variant (a) gap = 0.245; (b)+adv gap = 0.291. -> no.
+3. **Frozen-LSA (b) trades all-users for within-archetype robustness?** (a) all-users 0.974 / within-arch 0.750; (b) all-users 0.958 / within-arch 0.850.
+
+(CPU-reduced run: steps=1200, seeds=[0, 1]. Full spec = 15k steps x 3 seeds; rerun on GPU with default env for final numbers.)
+
