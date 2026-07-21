@@ -25,3 +25,5 @@ log/*
 !log/run_batch_matrix.py
 
 log_v2/*
+
+log_power/*
