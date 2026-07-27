@@ -508,7 +508,7 @@ print("\\nLOAO - leave-one-ARCHETYPE-out (hold out a whole deck family, no sibli
 display(loao[["n test games"] + SCORES].style.format({"n test games": "{:.0f}", **{c: "{:.3f}" for c in SCORES}})
         .background_gradient(cmap="rocket_r", subset=SCORES))
 
-# ---- headline comparison -------------------------------------------------
+# ---- headline comparison, single game ------------------------------------
 headline = pd.DataFrame({
     "within-deck (9)": [within_df["LDA ARI (5-fold)"].mean(), np.nan, within_df["KMeans ARI (k=5)"].mean()],
     "cross-deck LODO (9)": [lodo["LDA ARI"].mean(), lodo["KMeans ARI (fit on train)"].mean(),
@@ -516,60 +516,95 @@ headline = pd.DataFrame({
     "cross-family LOAO (4)": [loao["LDA ARI"].mean(), loao["KMeans ARI (fit on train)"].mean(),
                               loao["KMeans ARI (fit on held-out)"].mean()],
 }, index=["LDA", "KMeans (fit on train)", "KMeans (fit on held-out)"])
-print("\\nHeadline mean ARI (chance line 0.20):")
+print("\\nHeadline mean ARI at N = 1, a single game (chance line 0.20):")
 display(headline.round(3))
 
+# ---- the same three protocols swept over N, the games pooled per fingerprint ----
+NS_CROSS = (1, 2, 3, 5, 8, 10, 15, 20, 25, 35, 50, 70, 90, 100, 120)
+
+def _fold_curve(tr, te, feats, Ns, reps):
+    """One train/test split -> LDA ARI at every N. Scaler and NaN medians come from the TRAIN side only."""
+    Xtr, ytr = _xy(tr, feats); Xte, yte = _xy(te, feats, fill_from=tr)
+    sc = StandardScaler().fit(Xtr); Xtr, Xte = sc.transform(Xtr), sc.transform(Xte)
+    a = {s: Xtr[ytr == s] for s in STYLE_ORDER}; b = {s: Xte[yte == s] for s in STYLE_ORDER}
+    out = {}
+    for N in Ns:
+        Xa, ya = fps(a, N, reps, 10); Xb2, yb2 = fps(b, N, reps, 20)
+        out[N] = adjusted_rand_score(yb2, LinearDiscriminantAnalysis().fit(Xa, ya).predict(Xb2))
+    return out
+
+def cross_agg_curve(frame, feats, split_col, Ns=(1, 5, 10, 25, 50, 100), reps=250):
+    """Hold out each group of `split_col`, pool N of its games into one fingerprint, and score an LDA
+    trained on train-group fingerprints. Mean ARI over held-out groups, per N."""
+    out = {N: [] for N in Ns}
+    for held in sorted(frame[split_col].unique()):
+        for N, v in _fold_curve(frame[frame[split_col] != held],
+                                frame[frame[split_col] == held], feats, Ns, reps).items():
+            out[N].append(v)
+    return pd.Series({N: float(np.mean(v)) for N, v in out.items()})
+
+def within_agg_curve(frame, feats, Ns=NS_CROSS, reps=250, seed=1):
+    """Same protocol, but train and test stay INSIDE one deck (50/50 held-out split per style), so no
+    deck boundary is ever crossed. This is the ceiling the two transfer curves are measured against."""
+    rng = np.random.default_rng(seed)
+    out = {N: [] for N in Ns}
+    for deck, g in frame.groupby("deck", observed=True):
+        tr_idx, te_idx = [], []
+        for st in STYLE_ORDER:
+            idx = g.index[g["style"] == st].to_numpy().copy(); rng.shuffle(idx)
+            h = len(idx) // 2; tr_idx += list(idx[:h]); te_idx += list(idx[h:])
+        for N, v in _fold_curve(frame.loc[tr_idx], frame.loc[te_idx], feats, Ns, reps).items():
+            out[N].append(v)
+    return pd.Series({N: float(np.mean(v)) for N, v in out.items()})
+
+curve_within = within_agg_curve(df, FEATURES, NS_CROSS)                # 9 decks, 50/50 inside each
+curve_lodo   = cross_agg_curve(df, FEATURES, "deck", NS_CROSS)         # leave-one-DECK-out (9 folds)
+curve_loao   = cross_agg_curve(df, FEATURES, "deck_family", NS_CROSS)  # leave-one-ARCHETYPE-out (4 folds)
+
+curves = pd.DataFrame({"within-deck (9)":       curve_within,
+                       "cross-deck LODO (9)":   curve_lodo,
+                       "cross-family LOAO (4)": curve_loao})
+curves.index.name = "N games pooled"
+print("\\nLDA ARI on N-game fingerprints (chance line 0.20):")
+display(curves.round(3))
+
 fig, ax = plt.subplots(1, 2, figsize=(16, 4.8))
-prot = {"within-deck\\n(9 decks)": within_df["LDA ARI (5-fold)"].values,
-        "cross-deck\\nLODO (9)":   lodo["LDA ARI"].values,
-        "cross-family\\nLOAO (4)":  loao["LDA ARI"].values}
-xs = np.arange(len(prot))
-ax[0].bar(xs, [np.mean(v) for v in prot.values()], color=["#3182bd", "#fdae6b", "#e6550d"], alpha=.85)
-for i, v in enumerate(prot.values()):
-    ax[0].scatter([i] * len(v), v, color="k", s=14, zorder=3, alpha=.55)   # per-fold spread
+xs = np.arange(len(NS_CROSS))
+ax[0].plot(xs, curve_within.values, "o-",  color="#3182bd", label="within-deck (mean of 9)")
+ax[0].plot(xs, curve_lodo.values,   "s--", color="#fdae6b", label="cross-deck LODO (mean of 9)")
+ax[0].plot(xs, curve_loao.values,   "^-.", color="#e6550d", label="cross-family LOAO (mean of 4)")
+ax[0].axhline(0.9, color="green", ls=":", lw=1, label="ARI 0.9")
 ax[0].axhline(CHANCE, color="crimson", ls="--", lw=1.2, label="chance")
-ax[0].set_xticks(xs); ax[0].set_xticklabels(list(prot.keys()))
-ax[0].set_ylabel("LDA ARI"); ax[0].set_title("Supervised (LDA): within vs cross-deck vs cross-family")
-ax[0].legend()
+ax[0].set_xticks(xs); ax[0].set_xticklabels(NS_CROSS, rotation=45); ax[0].set_ylim(-0.02, 1.02)
+ax[0].set_xlabel("games pooled into one fingerprint (N)"); ax[0].set_ylabel("LDA ARI")
+ax[0].set_title("Supervised (LDA): within vs cross-deck vs cross-family"); ax[0].legend(fontsize=8)
 rec = lodo[[f"recall {s}" for s in STYLE_ORDER]].copy()
 rec.columns = STYLE_ORDER
 sns.heatmap(rec, annot=True, fmt=".2f", cmap="viridis", vmin=0, vmax=1, ax=ax[1],
             cbar_kws={"label": "per-style recall"})
-ax[1].set_title("LODO per-style recall (row = held-out deck)")
+ax[1].set_title("LODO per-style recall at N = 1 (row = held-out deck)")
 ax[1].set_yticklabels(ax[1].get_yticklabels(), rotation=0, fontsize=8)
 fig.tight_layout(); plt.show()
 '''
 
 C_CROSS_N = '''
-# ===== SS 9b - cross-deck ARI once games are pooled into fingerprints =====
-def cross_agg_curve(frame, feats, split_col, Ns=(1, 5, 10, 25, 50, 100), reps=250):
-    """Hold out each group, pool N of its games into one fingerprint, and score
-    an LDA trained on train-group fingerprints. Mean over held-out groups."""
-    out = {N: [] for N in Ns}
-    for held in sorted(frame[split_col].unique()):
-        tr = frame[frame[split_col] != held]; te = frame[frame[split_col] == held]
-        Xtr, ytr = _xy(tr, feats); Xte, yte = _xy(te, feats, fill_from=tr)
-        sc = StandardScaler().fit(Xtr); Xtr, Xte = sc.transform(Xtr), sc.transform(Xte)
-        a = {s: Xtr[ytr == s] for s in STYLE_ORDER}; b = {s: Xte[yte == s] for s in STYLE_ORDER}
-        for N in Ns:
-            Xa, ya = fps(a, N, reps, 10); Xb2, yb2 = fps(b, N, reps, 20)
-            p = LinearDiscriminantAnalysis().fit(Xa, ya).predict(Xb2)
-            out[N].append(adjusted_rand_score(yb2, p))
-    return pd.Series({N: float(np.mean(v)) for N, v in out.items()})
-
-curve_lodo = cross_agg_curve(df, FEATURES, "deck")
-curve_loao = cross_agg_curve(df, FEATURES, "deck_family")
-
+# ===== SS 9b - the two transfer curves on their own, without the within-deck ceiling =====
+# Both curves were computed in SS 8-9 (`cross_agg_curve`); nothing is recomputed here.
 fig, ax = plt.subplots(figsize=(9, 4.6)); xs = range(len(curve_lodo.index))
 ax.plot(xs, curve_lodo.values, "o-", label="cross-deck LODO (mean of 9)")
 ax.plot(xs, curve_loao.values, "s--", label="cross-family LOAO (mean of 4)")
 ax.axhline(0.9, color="g", ls=":", lw=1, label="ARI 0.9"); ax.axhline(CHANCE, color="k", ls=":", lw=1, label="chance")
-ax.set_xticks(list(xs)); ax.set_xticklabels(curve_lodo.index)
+ax.set_xticks(list(xs)); ax.set_xticklabels(curve_lodo.index, rotation=45)
 ax.set_xlabel("games of the held-out deck pooled into one fingerprint (N)")
 ax.set_ylabel("ARI (LDA)"); ax.set_ylim(-0.02, 1.02)
 ax.set_title("SS 9b  Cross-deck transfer recovers as games are pooled")
 ax.legend(fontsize=8); fig.tight_layout(); plt.show()
-display(pd.DataFrame({"LODO": curve_lodo, "LOAO": curve_loao}).round(3))
+
+for name, c in [("within-deck", curve_within), ("cross-deck LODO", curve_lodo), ("cross-family LOAO", curve_loao)]:
+    n50 = next((N for N in c.index if c[N] >= 0.5), None)
+    n90 = next((N for N in c.index if c[N] >= 0.9), None)
+    print(f"{name:>18}:  N for ARI 0.5 = {n50}   N for ARI 0.9 = {n90}   "
+          f"best {c.max():.3f} at N = {c.idxmax()}")
 '''
 
 C_DECKZ = '''
@@ -691,10 +726,12 @@ re-clustering that deck's own games from scratch (**0.088**). Carrying the clust
 boundary actively hurts, which means the centroids sit on coordinates that describe the deck rather \
 than the player.
 
-**5. Pooling fixes noise, not domain shift (SS 9b).** With decks pooled, N = 50 games was enough for \
-ARI 0.90. Across decks the same aggregation plateaus at **0.469** (LODO) and **0.597** (LOAO) even at \
-N = 100 games. More data on the new deck does not buy you a model that was trained on the wrong \
-coordinates.
+**5. Pooling fixes noise, not domain shift (SS 8-9, 9b).** With decks pooled, N = 50 games was enough \
+for ARI 0.90. The three-protocol sweep says the same thing more sharply: **within-deck** fingerprints \
+climb past 0.90 by **N = 35** and reach 0.99 at N = 120, while across decks the identical aggregation \
+plateaus at **0.469** (LODO) and **0.597** (LOAO) even at N = 100 games. The gap between those curves \
+does not close with more data - more games on the new deck do not buy you a model that was trained on \
+the wrong coordinates.
 
 **6. Deck-normalisation recovers a real but partial share (SS 10).** Re-expressing each statistic as \
 a deviation from the same-deck average player lifts LDA LODO **0.127 -> 0.156** and LOAO \
@@ -831,6 +868,12 @@ def build():
            "* **fit on held-out** - KMeans is run on the held-out deck's own games. No transfer happens; "
            "it is the unsupervised ceiling for that deck, and the gap between the two is the cost of "
            "moving centroids across a domain shift.\n\n"
+           "The per-fold tables score a **single game**. The figure then sweeps all three protocols - "
+           "**within-deck** (SS 7's ceiling, re-run here as a 50/50 held-out split inside each deck so it "
+           "uses the same fingerprint protocol as the transfer curves), **LODO** and **LOAO** - over "
+           "**N**, the number of games pooled into one fingerprint. The **gap between the within-deck "
+           "curve and the two transfer curves is the deck leakage**, and how fast the transfer curves "
+           "climb says how many unseen-deck games a fingerprint needs.\n\n"
            "> **How different are the 9 decks, really?** (checked against "
            "[`decks_v2.py`](../decks_v2.py)) They are **9 different hero classes, one each** - Warrior, "
            "Paladin, Shaman, Hunter, Rogue, Druid, Priest, Mage, Warlock - not variants of one "
@@ -852,10 +895,11 @@ def build():
            "here as *a second, slightly stricter LODO*, not as a categorically harder test."),
         code(C_CROSS),
         md("### 9b - How much does pooling games rescue the transfer?\n\n"
-           "Single held-out games are the worst case. Pool **N** games from the held-out deck into one "
-           "fingerprint and re-score. If the cross-deck curve climbs toward 1.0 the style signal does "
+           "The two transfer curves from above, plotted on their own without the within-deck ceiling "
+           "compressing the y-axis. If a cross-deck curve climbs toward 1.0 the style signal does "
            "transfer - it was only buried under per-game noise; if it plateaus low, the features really "
-           "are measuring the deck."),
+           "are measuring the deck. The printed lines give the **N needed to reach ARI 0.5 / 0.9** under "
+           "each protocol."),
         code(C_CROSS_N),
 
         md("## 10 - Domain-shift correction\n\n"

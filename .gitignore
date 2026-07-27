@@ -25,5 +25,15 @@ log/*
 !log/run_batch_matrix.py
 
 log_v2/*
+!log_v2/run_batch_matrix_v2.py
+!log_v2/run_batch_v2.ipynb
+!log_v2/run_stage2.py
 
 log_power/*
+!log_power/run_batch_powerlog.py
+!log_power/run_batch_powerlog.ipynb
+!log_power/sim_powerlog.py
+!log_power/roundtrip_check.py
+!log_power/README.md
+!log_power/powerlog_render.py
+!log_power/_make_powerlog_notebook.py
