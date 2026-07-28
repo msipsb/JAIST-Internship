@@ -243,7 +243,7 @@ CH_DROP = ["ch_n_options", "ch_face_dilemma_rate", "ch_hero_attack_face_pref"]
 CH      = [c for c in CH_ALL if c not in CH_DROP]
 
 if BLOCK == "raw":
-    FEATURES, GRID_METRICS, BLOCK_LABEL = list(RAW), list(RAW), "V1-V4 raw metrics"
+    FEATURES, GRID_METRICS, BLOCK_LABEL = list(RAW), list(RAW), "raw metrics"
 elif BLOCK == "choice":
     FEATURES, GRID_METRICS, BLOCK_LABEL = list(CH), list(CH_ALL), "choice-relative metrics"
 elif BLOCK == "both":
@@ -590,11 +590,19 @@ display(acc.style.format("{:.3f}").background_gradient(cmap="rocket_r", subset=S
 
 C_CROSS_A = '''
 # ===== SS 9a - within-deck vs cross-deck vs cross-family transfer, as games are pooled =====
+# The three protocols are run twice, on the SAME sampled fingerprints, so the two models are compared
+# under identical conditions:
+#   supervised   = LDA          - fit on (train fingerprints, train labels)
+#   unsupervised = KMeans(k=5)  - fit on the train fingerprints with the labels WITHHELD; ARI is
+#                                 permutation-invariant, so raw cluster ids score directly (no mapping).
 from sklearn.preprocessing import StandardScaler
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score, confusion_matrix
+from scipy.optimize import linear_sum_assignment
 
-NS_CROSS = (1, 2, 3, 5, 8, 10, 15, 20, 25, 35, 50, 70, 90, 100, 120)
+NS_CROSS = (1,) + tuple(range(5, 151, 5))       # 1, 5, 10, 15, ... , 150
+NSTYLE   = len(STYLE_ORDER)
 
 def _xy(frame, feats, fill_from=None):
     med = (frame if fill_from is None else fill_from)[feats].median()
@@ -604,86 +612,125 @@ def _fp_sample(by, N, reps, seed):
     """`reps` fingerprints per style, each the mean of N games drawn with replacement."""
     r = np.random.default_rng(seed); Xs, ys = [], []
     for si, s in enumerate(STYLE_ORDER):
-        if len(by[s]) == 0:
+        a = by[s]
+        if len(a) == 0:
             continue
-        for _ in range(reps):
-            Xs.append(by[s][r.integers(0, len(by[s]), N)].mean(0)); ys.append(si)
-    return np.array(Xs), np.array(ys)
+        Xs.append(a[r.integers(0, len(a), size=(reps, N))].mean(1)); ys.append(np.full(reps, si))
+    return np.vstack(Xs), np.concatenate(ys)
 
-def _fold_curve(tr, te, feats, Ns, reps):
-    """One train/test split -> ARI at every N. Scaler and NaN medians come from the TRAIN side only."""
+def _fold_curve(tr, te, feats, Ns, reps, models=("lda", "km")):
+    """One train/test split -> ARI at every N, for both models on the SAME drawn fingerprints.
+    Scaler and NaN medians come from the TRAIN side only. `models` lets a caller that only needs the
+    supervised curve (Reviewer #3) skip the KMeans fits."""
     Xtr, ytr = _xy(tr, feats); Xte, yte = _xy(te, feats, fill_from=tr)
     sc = StandardScaler().fit(Xtr); Xtr, Xte = sc.transform(Xtr), sc.transform(Xte)
     trby = {s: Xtr[ytr == s] for s in STYLE_ORDER}; teby = {s: Xte[yte == s] for s in STYLE_ORDER}
-    out = {}
+    lda_out, km_out = {}, {}
     for N in Ns:
         Xa, ya = _fp_sample(trby, N, reps, 10); Xb, yb = _fp_sample(teby, N, reps, 20)
-        out[N] = adjusted_rand_score(yb, LinearDiscriminantAnalysis().fit(Xa, ya).predict(Xb))
-    return out
+        if "lda" in models:
+            lda_out[N] = adjusted_rand_score(yb, LinearDiscriminantAnalysis().fit(Xa, ya).predict(Xb))
+        if "km" in models:
+            km_out[N] = adjusted_rand_score(yb, KMeans(NSTYLE, n_init=10, random_state=0).fit(Xa).predict(Xb))
+    return lda_out, km_out
 
-def cross_agg_curve(frame, feats, split_col, Ns=NS_CROSS, reps=300):
-    """Hold out each group of `split_col`, train on the rest. Mean ARI over held-out groups, per N."""
-    out = {N: [] for N in Ns}
+def _mean_pair(L, K, Ns):
+    """Fold lists -> (LDA curve, KMeans curve). A model that was not run comes back as an all-NaN curve."""
+    to_s = lambda d: pd.Series({N: (float(np.mean(d[N])) if d[N] else np.nan) for N in Ns})
+    return to_s(L), to_s(K)
+
+def cross_agg_curve(frame, feats, split_col, Ns=NS_CROSS, reps=300, models=("lda", "km")):
+    """Hold out each group of `split_col`, train on the rest. Mean ARI over held-out groups, per N.
+    Returns (LDA curve, KMeans curve)."""
+    L = {N: [] for N in Ns}; K = {N: [] for N in Ns}
     for held in sorted(frame[split_col].unique()):
-        for N, v in _fold_curve(frame[frame[split_col] != held],
-                                frame[frame[split_col] == held], feats, Ns, reps).items():
-            out[N].append(v)
-    return pd.Series({N: float(np.mean(v)) for N, v in out.items()})
+        lo, ko = _fold_curve(frame[frame[split_col] != held],
+                             frame[frame[split_col] == held], feats, Ns, reps, models)
+        for N in Ns:
+            if "lda" in models: L[N].append(lo[N])
+            if "km"  in models: K[N].append(ko[N])
+    return _mean_pair(L, K, Ns)
 
-def within_agg_curve(frame, feats, Ns=NS_CROSS, reps=300, seed=1):
+def within_agg_curve(frame, feats, Ns=NS_CROSS, reps=300, seed=1, models=("lda", "km")):
     """Same protocol, but train and test stay INSIDE one deck (50/50 held-out split per style), so no
     deck boundary is ever crossed. This is the ceiling the two transfer curves are measured against."""
     rng = np.random.default_rng(seed)
-    out = {N: [] for N in Ns}
+    L = {N: [] for N in Ns}; K = {N: [] for N in Ns}
     for deck, g in frame.groupby("deck"):
         tr_idx, te_idx = [], []
         for st in STYLE_ORDER:
             idx = g.index[g["style"] == st].to_numpy().copy(); rng.shuffle(idx)
             h = len(idx) // 2; tr_idx += list(idx[:h]); te_idx += list(idx[h:])
-        for N, v in _fold_curve(frame.loc[tr_idx], frame.loc[te_idx], feats, Ns, reps).items():
-            out[N].append(v)
-    return pd.Series({N: float(np.mean(v)) for N, v in out.items()})
+        lo, ko = _fold_curve(frame.loc[tr_idx], frame.loc[te_idx], feats, Ns, reps, models)
+        for N in Ns:
+            if "lda" in models: L[N].append(lo[N])
+            if "km"  in models: K[N].append(ko[N])
+    return _mean_pair(L, K, Ns)
 
-def lodo_per_style_recall(feats):
+def _km_predict_styles(Xtr, ytr, Xte):
+    """KMeans has no class names, so recall needs one: fit on the training decks without labels, name each
+    cluster by Hungarian-matching it to a style ON THE TRAIN SIDE, then carry those names to the held-out
+    deck. The mapping never sees the held-out labels."""
+    km = KMeans(NSTYLE, n_init=10, random_state=0).fit(Xtr)
+    M = np.array([[np.sum((ytr == s) & (km.labels_ == c)) for c in range(NSTYLE)] for s in STYLE_ORDER])
+    r, c = linear_sum_assignment(-M)
+    name = {c[i]: STYLE_ORDER[r[i]] for i in range(len(r))}
+    return np.array([name[l] for l in km.predict(Xte)])
+
+def lodo_per_style_recall(feats, model="lda"):
     """Single-game LODO recall per style, one row per held-out deck (the N=1 slice of the LODO curve)."""
     per_style = {}
     for held in sorted(df["deck"].unique()):
         tr = df[df["deck"] != held]; te = df[df["deck"] == held]
         Xtr, ytr = _xy(tr, feats); Xte, yte = _xy(te, feats, fill_from=tr)
-        sc = StandardScaler().fit(Xtr)
-        pred = LinearDiscriminantAnalysis().fit(sc.transform(Xtr), ytr).predict(sc.transform(Xte))
+        sc = StandardScaler().fit(Xtr); Xtr, Xte = sc.transform(Xtr), sc.transform(Xte)
+        pred = (LinearDiscriminantAnalysis().fit(Xtr, ytr).predict(Xte) if model == "lda"
+                else _km_predict_styles(Xtr, ytr, Xte))
         cm = confusion_matrix(yte, pred, labels=STYLE_ORDER, normalize="true")
         per_style[held] = dict(zip(STYLE_ORDER, np.diag(cm)))
     return per_style
 
-curve_within = within_agg_curve(df, FEATURES)                # 9 decks, 50/50 inside each
-curve_lodo   = cross_agg_curve(df, FEATURES, "deck")         # leave-one-DECK-out (9 folds)
-curve_loao   = cross_agg_curve(df, FEATURES, "deck_family")  # leave-one-ARCHETYPE-out (4 folds)
-lodo_ps      = lodo_per_style_recall(FEATURES)
+curve_within, curve_within_km = within_agg_curve(df, FEATURES)                # 9 decks, 50/50 inside each
+curve_lodo,   curve_lodo_km   = cross_agg_curve(df, FEATURES, "deck")         # leave-one-DECK-out (9 folds)
+curve_loao,   curve_loao_km   = cross_agg_curve(df, FEATURES, "deck_family")  # leave-one-ARCHETYPE-out (4)
+lodo_ps    = lodo_per_style_recall(FEATURES, "lda")
+lodo_ps_km = lodo_per_style_recall(FEATURES, "kmeans")
 
-curves = pd.DataFrame({"within-deck (9)":       curve_within,
-                       "cross-deck LODO (9)":   curve_lodo,
-                       "cross-family LOAO (4)": curve_loao})
+curves = pd.DataFrame({"LDA within-deck (9)":       curve_within,
+                       "LDA cross-deck LODO (9)":   curve_lodo,
+                       "LDA cross-family LOAO (4)": curve_loao,
+                       "KM within-deck (9)":        curve_within_km,
+                       "KM cross-deck LODO (9)":    curve_lodo_km,
+                       "KM cross-family LOAO (4)":  curve_loao_km})
 curves.index.name = "N games pooled"
-print(f"[{BLOCK_LABEL}]  LDA on N-game fingerprints, scored by ARI   chance = 0.20")
+print(f"[{BLOCK_LABEL}]  LDA and KMeans on N-game fingerprints, scored by ARI   chance = 0.20")
 display(curves.round(3))
 
-fig, ax = plt.subplots(1, 2, figsize=(15, 4.6))
+fig, ax = plt.subplots(2, 2, figsize=(17, 10.5))
 xs = range(len(NS_CROSS))
-ax[0].plot(xs, curve_within.values, "o-",  color="#3182bd", label="within-deck (mean of 9)")
-ax[0].plot(xs, curve_lodo.values,   "s--", color="#fdae6b", label="cross-deck LODO (mean of 9)")
-ax[0].plot(xs, curve_loao.values,   "^-.", color="#e6550d", label="cross-family LOAO (mean of 4)")
-ax[0].axhline(0.9, color="green", ls=":", lw=1, label="ARI 0.9")
-ax[0].axhline(0.20, color="crimson", ls="--", lw=1.2, label="chance")
-ax[0].set_xticks(list(xs)); ax[0].set_xticklabels(NS_CROSS, rotation=45); ax[0].set_ylim(0, 1.02)
-ax[0].set_xlabel("games pooled into one fingerprint (N)"); ax[0].set_ylabel("ARI (LDA)")
-ax[0].set_title(f"Within vs cross-deck vs cross-family - {BLOCK_LABEL}"); ax[0].legend(fontsize=8)
-psM = pd.DataFrame(lodo_ps).T[STYLE_ORDER]
-sns.heatmap(psM.reindex(sorted(psM.index)), annot=True, fmt=".2f", cmap="viridis", vmin=0, vmax=1,
-            ax=ax[1], cbar_kws={"label": "per-style recall"})
-ax[1].set_title("LODO per-style recall at N = 1 (row = held-out deck)")
-ax[1].set_yticklabels(ax[1].get_yticklabels(), rotation=0, fontsize=7)
-fig.tight_layout(); plt.show()
+
+def _curve_panel(a, cw, cl, cf, model):
+    a.plot(xs, cw.values, "o-",  color="#3182bd", label="within-deck (mean of 9)")
+    a.plot(xs, cl.values, "s--", color="#fdae6b", label="cross-deck LODO (mean of 9)")
+    a.plot(xs, cf.values, "^-.", color="#e6550d", label="cross-family LOAO (mean of 4)")
+    a.axhline(0.9, color="green", ls=":", lw=1, label="ARI 0.9")
+    a.axhline(0.20, color="crimson", ls="--", lw=1.2, label="chance")
+    a.set_xticks(list(xs)); a.set_xticklabels(NS_CROSS, rotation=90, fontsize=7); a.set_ylim(0, 1.02)
+    a.set_xlabel("games pooled into one fingerprint (N)"); a.set_ylabel(f"ARI ({model})")
+    a.set_title(f"{model} - within vs cross-deck vs cross-family", fontsize=11)
+    a.legend(fontsize=8, loc="lower right", framealpha=0.9)   # both panels are empty down there
+
+_curve_panel(ax[0, 0], curve_within,    curve_lodo,    curve_loao,    "LDA (supervised)")
+_curve_panel(ax[0, 1], curve_within_km, curve_lodo_km, curve_loao_km, "KMeans (unsupervised)")
+
+for a, ps, model in [(ax[1, 0], lodo_ps, "LDA"), (ax[1, 1], lodo_ps_km, "KMeans")]:
+    psM = pd.DataFrame(ps).T[STYLE_ORDER]
+    sns.heatmap(psM.reindex(sorted(psM.index)), annot=True, fmt=".2f", cmap="viridis", vmin=0, vmax=1,
+                ax=a, cbar_kws={"label": "per-style recall"})
+    a.set_title(f"{model} - LODO per-style recall at N = 1 (row = held-out deck)", fontsize=11)
+    a.set_yticklabels(a.get_yticklabels(), rotation=0, fontsize=7); a.set_xlabel("")
+fig.suptitle(f"SS 9a  Deck transfer, supervised (LDA) vs unsupervised (KMeans) - {BLOCK_LABEL}", fontsize=14)
+fig.tight_layout(rect=[0, 0, 1, 0.96]); plt.show()
 '''
 
 C_CROSS_B = '''
@@ -810,9 +857,9 @@ C_REV3 = '''
 # ===== Reviewer #3 - cross-deck domain-shift correction (per-deck z-score) =====
 # Re-express each feature as a deviation from the AVERAGE PLAYER OF THE SAME DECK, then re-test
 # transfer. This is the "old" deck-normalization; the comparison shows how much each block relies on it.
-from sklearn.preprocessing import StandardScaler
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.metrics import adjusted_rand_score
+# Both models run on the SAME drawn fingerprints (as in SS 9a): LDA supervised, KMeans k=5 unsupervised.
+# The `raw` curves repeat SS 9a's cross-family LOAO line - they are the control the correction is read
+# against, so they should overlay it up to the fingerprint-sampling noise (reps 250 here vs 300 there).
 
 def deck_zscore(frame, feats):
     g = frame.copy()
@@ -820,47 +867,69 @@ def deck_zscore(frame, feats):
     g[feats] = g.groupby("deck")[feats].transform(lambda s: (s - s.mean()) / (s.std(ddof=0) + 1e-9))
     return g
 
-def holdout_single(frame, feats, split_col):
-    """Single-game LDA transfer: train on all groups but one, test on the held-out group. Mean ARI."""
-    aris = []
-    for held in sorted(frame[split_col].unique()):
-        tr = frame[frame[split_col] != held]; te = frame[frame[split_col] == held]
-        med = tr[feats].median()
-        Xtr = tr[feats].fillna(med).fillna(0.0).values; Xte = te[feats].fillna(med).fillna(0.0).values
-        ytr = styles_of(tr); yte = styles_of(te)
-        sc = StandardScaler().fit(Xtr); Xtr, Xte = sc.transform(Xtr), sc.transform(Xte)
-        clf = LinearDiscriminantAnalysis()
-        aris.append(adjusted_rand_score(yte, clf.fit(Xtr, ytr).predict(Xte)))
-    return float(np.mean(aris))
-
 df_dz = deck_zscore(df, FEATURES)                       # domain-corrected features
-bars = {}
-for label, frame in [("raw features", df), ("deck-normalised", df_dz)]:
-    bars[label] = {"LDA LODO (9 decks)":    holdout_single(frame, FEATURES, "deck"),
-                   "LDA LOAO (4 families)": holdout_single(frame, FEATURES, "deck_family")}
-barsdf = pd.DataFrame(bars)
-print("Single-game cross-deck / cross-family ARI (LDA, chance = 0.20):"); display(barsdf.round(3))
 
-curve_raw = cross_agg_curve(df,    FEATURES, "deck_family", reps=250)
-curve_dz  = cross_agg_curve(df_dz, FEATURES, "deck_family", reps=250)
+raw_lda, raw_km = cross_agg_curve(df,    FEATURES, "deck_family", reps=250)
+dz_lda,  dz_km  = cross_agg_curve(df_dz, FEATURES, "deck_family", reps=250)
 
-fig, ax = plt.subplots(1, 2, figsize=(15, 5))
-barsdf.plot.bar(ax=ax[0]); ax[0].axhline(0.20, color="k", ls="--", lw=1, label="chance")
-ax[0].set_title("Single-game transfer (LDA): raw vs deck-normalised"); ax[0].set_ylabel("ARI")
-ax[0].set_xticklabels(ax[0].get_xticklabels(), rotation=0); ax[0].legend(fontsize=8, ncol=3)
-xs = range(len(curve_raw.index))
-ax[1].plot(xs, curve_raw.values, "o-", label="raw")
-ax[1].plot(xs, curve_dz.values, "s--", label="deck-normalised")
-ax[1].axhline(0.9, color="green", ls=":", lw=1); ax[1].axhline(0.2, color="gray", ls=":", lw=1)
-ax[1].set_xticks(list(xs)); ax[1].set_xticklabels(curve_raw.index, rotation=45); ax[1].set_ylim(0, 1.02)
-ax[1].set_xlabel("games pooled per fingerprint (N)"); ax[1].set_ylabel("cross-family ARI (mean of 4)")
-ax[1].set_title("Aggregated cross-family (LDA): raw vs deck-normalised"); ax[1].legend(fontsize=9)
+rev3 = pd.DataFrame({"LDA raw": raw_lda, "LDA deck-normalised": dz_lda,
+                     "KM raw":  raw_km,  "KM deck-normalised":  dz_km})
+rev3.index.name = "N games pooled"
+print(f"[{BLOCK_LABEL}]  cross-family LOAO ARI (mean of 4), raw vs deck-normalised   chance = 0.20")
+display(rev3.round(3))
+print("gain from deck-normalisation at N=1 / 25 / 150 -- "
+      f"LDA {(dz_lda - raw_lda).reindex([1, 25, 150]).round(3).tolist()}, "
+      f"KMeans {(dz_km - raw_km).reindex([1, 25, 150]).round(3).tolist()}")
+
+fig, ax = plt.subplots(1, 2, figsize=(15, 5), sharey=True)
+xs = range(len(NS_CROSS))
+for a, cr, cd, model in [(ax[0], raw_lda, dz_lda, "LDA (supervised)"),
+                         (ax[1], raw_km,  dz_km,  "KMeans (unsupervised)")]:
+    a.plot(xs, cr.values, "o-",  color="#3182bd", label="raw")
+    a.plot(xs, cd.values, "s--", color="#e6550d", label="deck-normalised")
+    a.axhline(0.9,  color="green",   ls=":",  lw=1,   label="ARI 0.9")
+    a.axhline(0.20, color="crimson", ls="--", lw=1.2, label="chance")
+    a.set_xticks(list(xs)); a.set_xticklabels(NS_CROSS, rotation=90, fontsize=7); a.set_ylim(0, 1.02)
+    a.set_xlabel("games pooled per fingerprint (N)")
+    a.set_title(f"{model} - cross-family LOAO: raw vs deck-normalised", fontsize=11)
+    a.legend(fontsize=8, loc="lower right", framealpha=0.9)
+ax[0].set_ylabel("cross-family ARI (mean of 4)")
 fig.suptitle(f"Reviewer #3 - Domain-shift correction (deviation from the same-deck average player) - {BLOCK_LABEL}",
              fontsize=12)
-fig.tight_layout(rect=[0, 0, 1, 0.95]); plt.show()
+fig.tight_layout(rect=[0, 0, 1, 0.93]); plt.show()
 print("Read: per-deck z-scoring removes the deck's overall bias; compare how much it moves THIS block "
-      "vs the others -- the raw block should gain the most, the choice block the least.")
+      "vs the others. Under LDA the gain ranks as expected -- raw most (most deck-biased), choice least "
+      "(already deck-normalized by construction). The KMeans panel asks the harder question, whether the "
+      "correction also makes the 5 styles separable WITHOUT labels, and there the ranking FLIPS: the raw "
+      "block gains the least. Unsupervised, raw features cluster by deck no matter how they are centred, "
+      "so removing the deck mean does not hand KMeans a style-shaped geometry the way it does for choice.")
 '''
+
+
+MD_CROSS = (
+    "## 9 - Cross-deck transfer - the deck-agnostic test\n\n"
+    "Sections 1-8 pooled all decks. Here we ask whether the model reads the **player** or the "
+    "**deck**: train on some decks and predict style on decks **never seen in training**. Each "
+    "protocol is scored by **ARI** and swept over **N**, the number of games pooled into one "
+    "fingerprint (**N = 1, 5, 10, ... , 150**) - so the deck-transfer question is asked the same way "
+    "SS 8 asked the how-many-games question, not just at the single-game level.\n\n"
+    "* **within-deck** - train and test inside the *same* deck (50/50 held-out split per style), "
+    "averaged over the 9 decks: the ceiling, where no deck boundary is ever crossed.\n"
+    "* **LODO** (leave-one-deck-out) - train on 8 decks, test on the 9th; mean over all 9.\n"
+    "* **LOAO** (leave-one-archetype-out) - hold out a whole deck **family** (aggro / midrange / "
+    "highlander_control / combo_tempo), so no sibling deck leaks into training - the strict test.\n\n"
+    "All three run **twice on the same drawn fingerprints**: **LDA** (supervised, left) and "
+    "**KMeans k=5** (unsupervised, right). The KMeans curve is the harder question - can the 5 styles "
+    "be *recovered without labels* on an unseen deck - and the gap between the two panels is how much "
+    "of the signal only exists once you are told what to look for. Below each curve panel is that "
+    "model's **LODO per-style recall at N = 1** (row = held-out deck), so a curve can be read together "
+    "with which styles it is actually getting right. KMeans has no class names, so its clusters are "
+    "Hungarian-matched to styles **on the training decks** before recall is measured.\n\n"
+    "The **gap between the within-deck curve and the two transfer curves is the deck leakage**, and "
+    "how fast the transfer curves climb says how many unseen-deck games a fingerprint needs. This "
+    "is where the three blocks should part ways: the raw block is expected to fall toward chance "
+    "across decks at low N, the choice block to hold up better."
+)
 
 
 def build(block):
@@ -947,21 +1016,7 @@ def build(block):
            "Q1: how many games are needed (chance line 0.20)? Q2: what does a single unknown game tell "
            "us (the N=1 confusion)? Per-style curves are **recall**, since ARI is a whole-partition score."),
         code(C_NSWEEP),
-        md("## 9 - Cross-deck transfer - the deck-agnostic test\n\n"
-           "Sections 1-8 pooled all decks. Here we ask whether the model reads the **player** or the "
-           "**deck**: train on some decks and predict style on decks **never seen in training**. All "
-           "three protocols use the **LDA**, are scored by **ARI**, and are swept over **N**, the number "
-           "of games pooled into one fingerprint - so the deck-transfer question is asked the same way "
-           "SS 8 asked the how-many-games question, not just at the single-game level.\n\n"
-           "* **within-deck** - train and test inside the *same* deck (50/50 held-out split per style), "
-           "averaged over the 9 decks: the ceiling, where no deck boundary is ever crossed.\n"
-           "* **LODO** (leave-one-deck-out) - train on 8 decks, test on the 9th; mean over all 9.\n"
-           "* **LOAO** (leave-one-archetype-out) - hold out a whole deck **family** (aggro / midrange / "
-           "highlander_control / combo_tempo), so no sibling deck leaks into training - the strict test.\n\n"
-           "The **gap between the within-deck curve and the two transfer curves is the deck leakage**, and "
-           "how fast the transfer curves climb says how many unseen-deck games a fingerprint needs. This "
-           "is where the three blocks should part ways: the raw block is expected to fall toward chance "
-           "across decks at low N, the choice block to hold up better."),
+        md(MD_CROSS),
         code(C_CROSS_A),
         code(C_CROSS_B),
         md("## 10 - Reviewer follow-ups - Prof. Kokolo's feedback\n\n"
@@ -971,14 +1026,19 @@ def build(block):
            "* **#2 - ARI as N grows** - both the unsupervised (KMeans) and the supervised (LDA) curve "
            "between the N=1 and N=120 extremes.\n"
            "* **#3 - Cross-deck domain-shift correction** - re-express each feature as a deviation from "
-           "the *same-deck average player* (per-deck z-score) and re-test cross-family transfer."),
+           "the *same-deck average player* (per-deck z-score) and re-test cross-family transfer, "
+           "swept over N for both LDA and KMeans."),
         code(C_REV1),
         code(C_REV2),
         md("### Reviewer #3 - cross-deck aggregation + domain-shift correction\n\n"
            "How far a game deviates from the **average player of its own deck** removes the deck's "
            "overall bias before we test transfer. The raw block should gain the most from this "
            "correction (it is the most deck-biased); the choice block the least (it is already "
-           "deck-normalized by construction)."),
+           "deck-normalized by construction).\n\n"
+           "Both curves are swept over **N** and run for **LDA** (supervised, left) and **KMeans k=5** "
+           "(unsupervised, right), so the correction is judged on whether it also helps *without* "
+           "labels. The **raw** line is the same quantity as SS 9a's cross-family LOAO curve - it is "
+           "replotted here as the control the correction is measured against."),
         code(C_REV3),
     ]
     nb = nbf.v4.new_notebook()

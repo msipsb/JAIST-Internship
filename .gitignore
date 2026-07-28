@@ -19,7 +19,7 @@ __pycache__/
 
 Papers/*
 !Papers/Papers_list.md
-Seminar/
+Seminar/*
 
 log/*
 !log/run_batch_matrix.py
