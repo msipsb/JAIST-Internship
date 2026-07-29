@@ -1,19 +1,22 @@
 """
-Within-deck ARI-vs-N: FULL V1-V4 engine features vs the card-sequence-only
-survivable subset.
+Within-deck ARI-vs-N: the FULL log_v2 feature set (raw engine metrics +
+choice-relative metrics) vs the card-sequence-only survivable subset.
 
 Both curves are computed on the SAME games (out/features.csv), with the SAME
 method the earlier reports used (bootstrap fingerprints -> KMeans(k=5) ->
 adjusted Rand index vs the true style), so the only thing that differs between
 the two curves is the feature set.
 
-  FULL      every raw_* metric = the V1-V4 absolute engine statistics the
-            earlier reports used (needs board / health / hand / combat state).
+  RAW+CHOICE  every raw_* metric (the V1-V4 absolute engine statistics) plus
+              every ch_* choice-relative metric -- what the player picked
+              measured against the options the engine actually offered. Needs
+              the full per-decision log (board / health / hand / combat state
+              and the legal-option list).
 
-  CARDSEQ   only the raw_* metrics that survive from the card-play sequence
-            alone -- cost / composition / timing. This is the subset that is
-            still computable when all you have is the ordered list of cards
-            played, which is the situation of the real human dataset.
+  CARDSEQ     only the raw_* metrics that survive from the card-play sequence
+              alone -- cost / composition / timing. This is the subset that is
+              still computable when all you have is the ordered list of cards
+              played, which is the situation of the real human dataset.
 
 "Within-deck": fingerprints are built per deck and clustered per deck, then the
 ARI is averaged over the 9 decks (band = +/- 1 std across decks). This is the
@@ -43,7 +46,7 @@ REPS = 150
 
 # ---- the two feature sets -------------------------------------------------
 # every V1-V4 absolute engine metric (the "old full features")
-FULL = [
+RAW = [
     "raw_n_turns", "raw_n_decisions", "raw_face_dmg_per_turn",
     "raw_dmg_taken_per_turn", "raw_heal_per_turn", "raw_face_attack_ratio",
     "raw_attacks_per_turn", "raw_cards_per_turn", "raw_avg_card_cost",
@@ -53,6 +56,19 @@ FULL = [
     "raw_opp_minions_killed_per_turn", "raw_my_minions_lost_per_turn",
     "raw_first_minion_turn", "raw_deck_count_end",
 ]
+# the choice-relative block, same definition v2_cross_deck.py models:
+# every ch_* column except the three kept only as diagnostics --
+#   ch_n_options, ch_face_dilemma_rate    describe the deck's option supply,
+#       not the player's preference within it;
+#   ch_hero_attack_face_pref              undefined for the 3 weaponless decks
+#       (both Reno decks, Zoo), so its mere presence encodes deck identity.
+CHOICE = [
+    "ch_face_pref", "ch_attack_engage", "ch_heropower_pref", "ch_play_pref",
+    "ch_pass_with_play", "ch_minion_play_pref", "ch_hp_over_play",
+    "ch_cost_pct", "ch_max_cost_pref", "ch_mana_commit",
+    "ch_target_atk_pct", "ch_target_hp_pct",
+]
+FULL = RAW + CHOICE
 # the subset computable from the ordered card plays alone:
 #   turn + (card id -> cost, minion/spell).  No board, health, hand or combat.
 # Dropped vs FULL because they need the engine trace: face/dmg-taken/heal per
@@ -116,15 +132,19 @@ def main():
     df = pd.read_csv(os.path.join(OUT, "features.csv"))
     print(f"{len(df)} games, {df['deck'].nunique()} decks, "
           f"styles={sorted(df['style'].unique())}")
-    print(f"FULL: {len(FULL)} features   CARDSEQ: {len(CARDSEQ)} features\n")
+    missing = [c for c in FULL + CARDSEQ if c not in df.columns]
+    if missing:
+        raise SystemExit(f"features.csv is missing: {missing}")
+    print(f"RAW+CHOICE: {len(FULL)} features ({len(RAW)} raw + "
+          f"{len(CHOICE)} choice)   CARDSEQ: {len(CARDSEQ)} features\n")
 
-    full_m, full_s = curve(df, FULL, "FULL")
+    full_m, full_s = curve(df, FULL, "RAW+CHOICE")
     cs_m, cs_s = curve(df, CARDSEQ, "CARDSEQ")
 
     # ---- save the numbers -------------------------------------------------
     tbl = pd.DataFrame({
         "N": N_GRID,
-        "full_ari_mean": full_m, "full_ari_std": full_s,
+        "raw_choice_ari_mean": full_m, "raw_choice_ari_std": full_s,
         "cardseq_ari_mean": cs_m, "cardseq_ari_std": cs_s,
     })
     tbl.to_csv(os.path.join(OUT, "cardseq_vs_full_ari.csv"), index=False)
@@ -136,7 +156,7 @@ def main():
     fig, ax = plt.subplots(figsize=(9.5, 6))
     for m, s, color, label in [
         (full_m, full_s, "#2166ac",
-         "full V1-V4 features (needs board/health/combat)"),
+         "raw + choice-relative features"),
         (cs_m, cs_s, "#b2182b",
          "card-sequence-only features (order/cost/type)"),
     ]:
@@ -150,8 +170,8 @@ def main():
     ax.set_ylabel("cluster-vs-style ARI   (1.0 = perfect, 0 = chance)")
     ax.set_ylim(-0.05, 1.0)
     ax.set_title("Within-deck: the 5 play-styles separate as games are pooled\n"
-                 "full engine features vs card-sequence-only features "
-                 "(mean over 9 decks, band = ±1 std)")
+                 "raw + choice-relative features vs card-sequence-only "
+                 "features (mean over 9 decks, band = ±1 std)")
     ax.legend(loc="upper left", frameon=False)
     ax.grid(alpha=0.25)
     fig.tight_layout()

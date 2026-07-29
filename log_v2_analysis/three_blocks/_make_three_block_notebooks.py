@@ -806,10 +806,11 @@ fig.tight_layout(rect=[0, 0, 1, 0.95]); plt.show()
 '''
 
 C_REV2 = '''
-# ===== Reviewer #2 - ARI as N increases, unsupervised (KMeans) and supervised (LDA) =====
+# ===== Reviewer #2 - ARI as N increases, supervised (LDA) and unsupervised (KMeans) =====
 from sklearn.cluster import KMeans
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.metrics import adjusted_rand_score
+from scipy.optimize import linear_sum_assignment
 
 Ns = [1, 2, 3, 5, 8, 10, 15, 20, 25, 35, 50, 70, 90, 100, 120]
 
@@ -821,35 +822,56 @@ def _boot(N, reps=200, seed=0):
             rows.append(a[rng.integers(0, len(a), N)].mean(0)); lab.append(st)
     return np.array(rows), np.array(lab)
 
-ari = []
-for N in Ns:
-    Xb, yb = _boot(N)
-    ari.append(adjusted_rand_score(yb, KMeans(5, n_init=10, random_state=0).fit_predict(Xb)))
+def _ovr_ari(y_true, y_pred, s):
+    """One-vs-rest ARI for style s: binarize both true & predicted labels to
+    'is s' / 'is not s', then score that 2-way partition with ARI. ARI itself has
+    no native per-class form (it scores a whole partition at once), so this is the
+    per-style substitute -- comparable across LDA and KMeans alike."""
+    return adjusted_rand_score((y_true == s).astype(int), (y_pred == s).astype(int))
 
+# ---- supervised (LDA): held-out fingerprints, per-style one-vs-rest ARI + overall ARI ----
 Xtr, ytr, Xte, yte = _heldout_split(df, FEATURES)
 trby = {s: Xtr[ytr == s] for s in STYLE_ORDER}; teby = {s: Xte[yte == s] for s in STYLE_ORDER}
-ari_overall, rec_per = [], {s: [] for s in STYLE_ORDER}
+ari_lda, ari_lda_ps = [], {s: [] for s in STYLE_ORDER}
 for N in Ns:
     Xa, ya = _fps(trby, N, 500, 10); Xc, yc = _fps(teby, N, 500, 20)
     p = LinearDiscriminantAnalysis().fit(Xa, ya).predict(Xc)
-    ari_overall.append(adjusted_rand_score(yc, p))
-    for si, s in enumerate(STYLE_ORDER):      # ARI has no per-class form -> recall
-        rec_per[s].append((p[yc == si] == si).mean())
+    ari_lda.append(adjusted_rand_score(yc, p))
+    for si, s in enumerate(STYLE_ORDER):
+        ari_lda_ps[s].append(_ovr_ari(yc, p, si))
+
+# ---- unsupervised (KMeans): same bootstrap fingerprints, cluster ids Hungarian-
+# matched to styles (by overlap with the true labels) so a per-style ARI can be
+# read off too -- the matching only NAMES the clusters, it never feeds labels to KMeans ----
+ari_km, ari_km_ps = [], {s: [] for s in STYLE_ORDER}
+for N in Ns:
+    Xb, yb = _boot(N)
+    lab = KMeans(5, n_init=10, random_state=0).fit_predict(Xb)
+    ari_km.append(adjusted_rand_score(yb, lab))
+    M = np.array([[np.sum((yb == s) & (lab == c)) for c in range(5)] for s in STYLE_ORDER])
+    r, c = linear_sum_assignment(-M)
+    name = {c[i]: STYLE_ORDER[r[i]] for i in range(len(r))}
+    pred = np.array([name[l] for l in lab])
+    for s in STYLE_ORDER:
+        ari_km_ps[s].append(_ovr_ari(yb, pred, s))
 
 fig, ax = plt.subplots(1, 2, figsize=(15, 5)); xs = range(len(Ns))
-ax[0].plot(xs, ari, "o-", color="#34495e"); ax[0].axhline(0.9, color="green", ls=":", lw=1)
-ax[0].axhline(0.2, color="gray", ls=":", lw=1)
-ax[0].set_xticks(list(xs)); ax[0].set_xticklabels(Ns, rotation=45); ax[0].set_ylim(0, 1.02)
-ax[0].set_xlabel("games pooled per fingerprint (N)"); ax[0].set_ylabel("KMeans cluster-style ARI")
-ax[0].set_title("Unsupervised (KMeans): 5 clusters sharpen as N grows")
 for s in STYLE_ORDER:
-    ax[1].plot(xs, rec_per[s], "o-", color=STYLE_COLORS[s], label=f"{s} (recall)", alpha=.85)
-ax[1].plot(xs, ari_overall, "k--", lw=2, label="overall ARI")
+    ax[0].plot(xs, ari_lda_ps[s], "o-", color=STYLE_COLORS[s], label=f"{s} (ARI)", alpha=.85)
+ax[0].plot(xs, ari_lda, "k--", lw=2, label="overall ARI")
+ax[0].axhline(0.9, color="green", ls=":", lw=1); ax[0].axhline(0.2, color="gray", ls=":", lw=1)
+ax[0].set_xticks(list(xs)); ax[0].set_xticklabels(Ns, rotation=45); ax[0].set_ylim(0, 1.02)
+ax[0].set_xlabel("games pooled per fingerprint (N)"); ax[0].set_ylabel("ARI")
+ax[0].set_title("Supervised (LDA): ARI vs N (+ per-style one-vs-rest ARI)"); ax[0].legend(fontsize=8)
+
+for s in STYLE_ORDER:
+    ax[1].plot(xs, ari_km_ps[s], "o-", color=STYLE_COLORS[s], label=f"{s} (ARI)", alpha=.85)
+ax[1].plot(xs, ari_km, "k--", lw=2, label="overall ARI")
 ax[1].axhline(0.9, color="green", ls=":", lw=1); ax[1].axhline(0.2, color="gray", ls=":", lw=1)
 ax[1].set_xticks(list(xs)); ax[1].set_xticklabels(Ns, rotation=45); ax[1].set_ylim(0, 1.02)
-ax[1].set_xlabel("games pooled per fingerprint (N)"); ax[1].set_ylabel("held-out score")
-ax[1].set_title("Supervised (LDA): ARI vs N (+ per-style recall)"); ax[1].legend(fontsize=8)
-fig.suptitle(f"Reviewer #2 - ARI as N increases, KMeans & LDA ({len(FEATURES)} {BLOCK_LABEL})", fontsize=13)
+ax[1].set_xlabel("games pooled per fingerprint (N)"); ax[1].set_ylabel("ARI")
+ax[1].set_title("Unsupervised (KMeans): ARI vs N (+ per-style one-vs-rest ARI, Hungarian-matched)"); ax[1].legend(fontsize=8)
+fig.suptitle(f"Reviewer #2 - ARI as N increases, LDA & KMeans ({len(FEATURES)} {BLOCK_LABEL})", fontsize=13)
 fig.tight_layout(rect=[0, 0, 1, 0.95]); plt.show()
 '''
 
